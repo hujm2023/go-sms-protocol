@@ -29,7 +29,7 @@ func (p *PduTerminate) IDecode(data []byte) error {
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
-	p.Header = buf.ReadHeader()
+	p.Header = cmpp.ReadHeader(buf)
 
 	return buf.Error()
 }
@@ -90,7 +90,7 @@ func (p *PduTerminateResp) IDecode(data []byte) error {
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
-	p.Header = buf.ReadHeader()
+	p.Header = cmpp.ReadHeader(buf)
 
 	return buf.Error()
 }

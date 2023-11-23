@@ -25,12 +25,12 @@ func NewPduHeader(l uint32, id CMDId, status CMDStatus, seq uint32) *Header {
 	return &Header{l, id, status, seq}
 }
 
-func ReadHeader(r *packet.PacketReader) Header {
+func ReadHeader(r *packet.Reader) Header {
 	var h Header
-	r.ReadNumeric(&h.Length)
-	r.ReadNumeric(&h.ID)
-	r.ReadNumeric(&h.Status)
-	r.ReadNumeric(&h.Sequence)
+	h.Length = r.ReadUint32()
+	h.ID = CMDId(r.ReadUint32())
+	h.Status = CMDStatus(r.ReadUint32())
+	h.Sequence = r.ReadUint32()
 	return h
 }
 

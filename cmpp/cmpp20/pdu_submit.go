@@ -1,7 +1,7 @@
 package cmpp20
 
 import (
-	"github.com/hujm2023/go-sms-protocol"
+	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -129,30 +129,30 @@ func (p *PduSubmit) IDecode(data []byte) error {
 	b := packet.NewPacketReader(data)
 	defer b.Release()
 
-	p.Header = b.ReadHeader()
-	b.ReadNumeric(&p.MsgID)
-	b.ReadNumeric(&p.PkTotal)
-	b.ReadNumeric(&p.PkNumber)
-	b.ReadNumeric(&p.RegisteredDelivery)
-	b.ReadNumeric(&p.MsgLevel)
+	p.Header = cmpp.ReadHeader(b)
+	p.MsgID = b.ReadUint64()
+	p.PkTotal = b.ReadUint8()
+	p.PkNumber = b.ReadUint8()
+	p.RegisteredDelivery = b.ReadUint8()
+	p.MsgLevel = b.ReadUint8()
 	p.ServiceID = b.ReadCStringN(10)
-	b.ReadNumeric(&p.FeeUserType)
+	p.FeeUserType = b.ReadUint8()
 	p.FeeTerminalID = b.ReadCStringN(21)
-	b.ReadNumeric(&p.TpPID)
-	b.ReadNumeric(&p.TpUDHI)
-	b.ReadNumeric(&p.MsgFmt)
+	p.TpPID = b.ReadUint8()
+	p.TpUDHI = b.ReadUint8()
+	p.MsgFmt = b.ReadUint8()
 	p.MsgSrc = b.ReadCStringN(6)
 	p.FeeType = b.ReadCStringN(2)
 	p.FeeCode = b.ReadCStringN(6)
 	p.ValIDTime = b.ReadCStringN(17)
 	p.AtTime = b.ReadCStringN(17)
 	p.SrcID = b.ReadCStringN(21)
-	b.ReadNumeric(&p.DestUsrTL)
+	p.DestUsrTL = b.ReadUint8()
 	p.DestTerminalID = make([]string, p.DestUsrTL)
 	for i := 0; i < int(p.DestUsrTL); i++ {
 		p.DestTerminalID[i] = b.ReadCStringN(21)
 	}
-	b.ReadNumeric(&p.MsgLength)
+	p.MsgLength = b.ReadUint8()
 	p.MsgContent = string(b.ReadNBytes(int(p.MsgLength)))
 	p.Reserve = b.ReadCStringN(8)
 
@@ -233,9 +233,9 @@ func (pr *PduSubmitResp) IDecode(data []byte) error {
 	b := packet.NewPacketReader(data)
 	defer b.Release()
 
-	pr.Header = b.ReadHeader()
-	b.ReadNumeric(&pr.MsgID)
-	b.ReadNumeric(&pr.Result)
+	pr.Header = cmpp.ReadHeader(b)
+	pr.MsgID = b.ReadUint64()
+	pr.Result = b.ReadUint8()
 
 	return b.Error()
 }

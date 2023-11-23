@@ -7,23 +7,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hujm2023/go-sms-protocol/cmpp"
+	"github.com/valyala/bytebufferpool"
 )
 
 var packetOrder = binary.BigEndian
 
-type PacketWriter struct {
-	buf     *bytes.Buffer
+type Writer struct {
+	buf     *bytebufferpool.ByteBuffer
 	written int
 	opError *packetOptError
 }
 
-func NewPacketWriter(totalLen int) *PacketWriter {
-	buf := make([]byte, 0, totalLen)
-	return &PacketWriter{buf: bytes.NewBuffer(buf)}
+func NewPacketWriter(totalLen int) *Writer {
+	return &Writer{buf: bytebufferpool.Get()}
 }
 
-func (p2 *PacketWriter) writeNumeric(p any) {
+func (p2 *Writer) writeNumeric(p any) {
 	if p2.opError != nil {
 		return
 	}
@@ -34,35 +33,35 @@ func (p2 *PacketWriter) writeNumeric(p any) {
 	}
 }
 
-func (p2 *PacketWriter) WriteUint8(p uint8) {
+func (p2 *Writer) WriteUint8(p uint8) {
 	p2.writeNumeric(p)
 	p2.written += 1
 
 	return
 }
 
-func (p2 *PacketWriter) WriteUint16(p uint16) {
+func (p2 *Writer) WriteUint16(p uint16) {
 	p2.writeNumeric(p)
 	p2.written += 2
 
 	return
 }
 
-func (p2 *PacketWriter) WriteUint32(p uint32) {
+func (p2 *Writer) WriteUint32(p uint32) {
 	p2.writeNumeric(p)
 	p2.written += 4
 
 	return
 }
 
-func (p2 *PacketWriter) WriteUint64(p uint64) {
+func (p2 *Writer) WriteUint64(p uint64) {
 	p2.writeNumeric(p)
 	p2.written += 8
 
 	return
 }
 
-func (p2 *PacketWriter) WriteBytes(data []byte) {
+func (p2 *Writer) WriteBytes(data []byte) {
 	if p2.opError != nil {
 		return
 	}
@@ -76,7 +75,7 @@ func (p2 *PacketWriter) WriteBytes(data []byte) {
 	p2.written += n
 }
 
-func (p2 *PacketWriter) WriteString(s string) {
+func (p2 *Writer) WriteString(s string) {
 	if p2.opError != nil {
 		return
 	}
@@ -95,7 +94,7 @@ func (p2 *PacketWriter) WriteString(s string) {
 	p2.written += n
 }
 
-func (p2 *PacketWriter) WriteCString(s string) {
+func (p2 *Writer) WriteCString(s string) {
 	if p2.opError != nil {
 		return
 	}
@@ -124,7 +123,7 @@ func (p2 *PacketWriter) WriteCString(s string) {
 	p2.written += n + 1
 }
 
-func (p2 *PacketWriter) WriteFixedLenString(s string, n int) {
+func (p2 *Writer) WriteFixedLenString(s string, n int) {
 	if p2.opError != nil {
 		return
 	}
@@ -148,7 +147,7 @@ func (p2 *PacketWriter) WriteFixedLenString(s string, n int) {
 	p2.written += nn
 }
 
-func (p2 *PacketWriter) Bytes() (data []byte, err error) {
+func (p2 *Writer) Bytes() (data []byte, err error) {
 	if p2.opError != nil {
 		return nil, p2.opError
 	}
@@ -159,7 +158,7 @@ func (p2 *PacketWriter) Bytes() (data []byte, err error) {
 	return res, nil
 }
 
-func (p2 *PacketWriter) BytesWithLength() (data []byte, err error) {
+func (p2 *Writer) BytesWithLength() (data []byte, err error) {
 	if p2.opError != nil {
 		return nil, p2.opError
 	}
@@ -171,18 +170,18 @@ func (p2 *PacketWriter) BytesWithLength() (data []byte, err error) {
 	return res, nil
 }
 
-func (p2 *PacketWriter) Written() int {
+func (p2 *Writer) Written() int {
 	return p2.written
 }
 
-func (p2 *PacketWriter) HexString() string {
+func (p2 *Writer) HexString() string {
 	if p2.opError != nil {
 		return ""
 	}
 	return hex.EncodeToString(p2.buf.Bytes())
 }
 
-func (p2 *PacketWriter) Error() error {
+func (p2 *Writer) Error() error {
 	if p2.opError != nil {
 		return p2.opError
 	}
@@ -190,13 +189,13 @@ func (p2 *PacketWriter) Error() error {
 	return nil
 }
 
-func (p2 *PacketWriter) Release() {
-	p2.buf.Reset()
+func (p2 *Writer) Release() {
+	bytebufferpool.Put(p2.buf)
 	p2.written = 0
 	p2.opError = nil
 }
 
-func (p2 *PacketWriter) Len() int {
+func (p2 *Writer) Len() int {
 	if p2.opError != nil {
 		return 0
 	}
@@ -205,16 +204,16 @@ func (p2 *PacketWriter) Len() int {
 
 // ----------------------------
 
-type PacketReader struct {
+type Reader struct {
 	buffer  *bytes.Buffer
 	opError *packetOptError
 }
 
-func NewPacketReader(data []byte) *PacketReader {
-	return &PacketReader{buffer: bytes.NewBuffer(data)}
+func NewPacketReader(data []byte) *Reader {
+	return &Reader{buffer: bytes.NewBuffer(data)}
 }
 
-func (p *PacketReader) ReadNumeric(data interface{}) {
+func (p *Reader) readNumeric(data interface{}) {
 	if p.opError != nil {
 		return
 	}
@@ -224,31 +223,31 @@ func (p *PacketReader) ReadNumeric(data interface{}) {
 	}
 }
 
-func (p *PacketReader) ReadUint8() uint8 {
+func (p *Reader) ReadUint8() uint8 {
 	var res uint8
-	p.ReadNumeric(&res)
+	p.readNumeric(&res)
 	return res
 }
 
-func (p *PacketReader) ReadUint16() uint16 {
+func (p *Reader) ReadUint16() uint16 {
 	var res uint16
-	p.ReadNumeric(&res)
+	p.readNumeric(&res)
 	return res
 }
 
-func (p *PacketReader) ReadUint32() uint32 {
+func (p *Reader) ReadUint32() uint32 {
 	var res uint32
-	p.ReadNumeric(&res)
+	p.readNumeric(&res)
 	return res
 }
 
-func (p *PacketReader) ReadUint64() uint64 {
+func (p *Reader) ReadUint64() uint64 {
 	var res uint64
-	p.ReadNumeric(&res)
+	p.readNumeric(&res)
 	return res
 }
 
-func (p *PacketReader) ReadBytes(receiver []byte) {
+func (p *Reader) ReadBytes(receiver []byte) {
 	if p.opError != nil {
 		return
 	}
@@ -269,7 +268,7 @@ func (p *PacketReader) ReadBytes(receiver []byte) {
 	}
 }
 
-func (p *PacketReader) ReadCStringN(n int) string {
+func (p *Reader) ReadCStringN(n int) string {
 	if p.opError != nil {
 		return ""
 	}
@@ -298,7 +297,7 @@ func (p *PacketReader) ReadCStringN(n int) string {
 	return string(temp)
 }
 
-func (p *PacketReader) ReadCString() string {
+func (p *Reader) ReadCString() string {
 	if p.opError != nil {
 		return ""
 	}
@@ -315,7 +314,7 @@ func (p *PacketReader) ReadCString() string {
 	return line[:len(line)-1]
 }
 
-func (p *PacketReader) ReadNBytes(n int) []byte {
+func (p *Reader) ReadNBytes(n int) []byte {
 	if p.opError != nil {
 		return nil
 	}
@@ -340,7 +339,7 @@ func (p *PacketReader) ReadNBytes(n int) []byte {
 	return temp
 }
 
-func (p *PacketReader) HexString() string {
+func (p *Reader) HexString() string {
 	if p.opError != nil {
 		return ""
 	}
@@ -348,7 +347,7 @@ func (p *PacketReader) HexString() string {
 	return hex.EncodeToString(p.buffer.Bytes())
 }
 
-func (p *PacketReader) Error() error {
+func (p *Reader) Error() error {
 	if p.opError != nil {
 		return p.opError
 	}
@@ -356,20 +355,16 @@ func (p *PacketReader) Error() error {
 	return nil
 }
 
-func (p *PacketReader) Release() {
+func (p *Reader) SetErrNil() {
+	p.opError = nil
+}
+
+func (p *Reader) Release() {
 	p.buffer.Reset()
 	p.opError = nil
 }
 
-func (p *PacketReader) ReadHeader() cmpp.Header {
-	var h cmpp.Header
-	p.ReadNumeric(&h.TotalLength)
-	p.ReadNumeric(&h.CommandID)
-	p.ReadNumeric(&h.SequenceID)
-	return h
-}
-
-func (p *PacketReader) Remaining() int {
+func (p *Reader) Remaining() int {
 	return p.buffer.Len()
 }
 

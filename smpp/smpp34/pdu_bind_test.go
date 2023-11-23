@@ -52,6 +52,7 @@ func (b *BindTestSuite) TestBind_IDecode() {
 func (b *BindTestSuite) TestBind_IEncode() {
 	bind := new(Bind)
 	assert.Nil(b.T(), bind.IDecode(b.bindBytes))
+
 	assert.Equal(b.T(), b.systemID, bind.SystemID)
 	assert.Equal(b.T(), b.password, bind.Password)
 	assert.Equal(b.T(), b.systemType, bind.SystemType)

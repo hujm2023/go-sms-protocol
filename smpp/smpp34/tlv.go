@@ -35,7 +35,7 @@ func (t *TLV) Bytes() []byte {
 	return b
 }
 
-func ReadTLVs(r *packet.PacketReader) (map[uint16]TLV, error) {
+func ReadTLVs(r *packet.Reader) (map[uint16]TLV, error) {
 	if r.Remaining() == 0 {
 		return nil, nil
 	}
@@ -54,7 +54,8 @@ func ReadTLVs(r *packet.PacketReader) (map[uint16]TLV, error) {
 		r.ReadBytes(temp)
 		if e := r.Error(); e != nil {
 			if errors.Is(e, io.EOF) {
-				return tlvs, nil
+				r.SetErrNil()
+				break
 			}
 			return nil, e
 		}
@@ -67,6 +68,7 @@ func ReadTLVs(r *packet.PacketReader) (map[uint16]TLV, error) {
 		r.ReadBytes(value)
 		if e := r.Error(); e != nil {
 			if errors.Is(r.Error(), io.EOF) {
+				r.SetErrNil()
 				break
 			}
 			return nil, e

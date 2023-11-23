@@ -103,15 +103,15 @@ func TestPacketReader(t *testing.T) {
 		defer r.Release()
 
 		d := new(_cmpp2DeliverReqPkt)
-		r.ReadNumeric(&d.MsgId)
+		d.MsgId = r.ReadUint64()
 		d.DestId = r.ReadCStringN(21)
 		d.ServiceId = r.ReadCStringN(10)
-		r.ReadNumeric(&d.TpPid)
-		r.ReadNumeric(&d.TpUdhi)
-		r.ReadNumeric(&d.MsgFmt)
+		d.TpPid = r.ReadUint8()
+		d.TpUdhi = r.ReadUint8()
+		d.MsgFmt = r.ReadUint8()
 		d.SrcTerminalId = r.ReadCStringN(21)
-		r.ReadNumeric(&d.RegisterDelivery)
-		r.ReadNumeric(&d.MsgLength)
+		d.RegisterDelivery = r.ReadUint8()
+		d.MsgLength = r.ReadUint8()
 
 		d.MsgContent = r.ReadCStringN(int(d.MsgLength))
 		d.Reserve = r.ReadCStringN(8)
@@ -158,22 +158,43 @@ func BenchmarkReader(bb *testing.B) {
 		r := NewPacketReader(b)
 
 		d := new(_cmpp2DeliverReqPkt)
-		r.ReadNumeric(&d.MsgId)
+		d.MsgId = r.ReadUint64()
 		d.DestId = r.ReadCStringN(21)
 		d.ServiceId = r.ReadCStringN(10)
-		r.ReadNumeric(&d.TpPid)
-		r.ReadNumeric(&d.TpUdhi)
-		r.ReadNumeric(&d.MsgFmt)
+		d.TpPid = r.ReadUint8()
+		d.TpUdhi = r.ReadUint8()
+		d.MsgFmt = r.ReadUint8()
 		d.SrcTerminalId = r.ReadCStringN(21)
-		r.ReadNumeric(&d.RegisterDelivery)
-		r.ReadNumeric(&d.MsgLength)
-
+		d.RegisterDelivery = r.ReadUint8()
+		d.MsgLength = r.ReadUint8()
 		d.MsgContent = string(r.ReadNBytes(int(d.MsgLength)))
 		d.Reserve = r.ReadCStringN(8)
 
 		assert.Nil(bb, r.Error())
 
 		assert.True(bb, reflect.DeepEqual(d, dd))
+
+		r.Release()
+	}
+}
+
+func BenchmarkWriter(bb *testing.B) {
+	bb.ResetTimer()
+	for i := 0; i < bb.N; i++ {
+		r := NewPacketWriter(0)
+		r.WriteUint64(dd.MsgId)
+		r.WriteFixedLenString(dd.DestId, 21)
+		r.WriteFixedLenString(dd.ServiceId, 10)
+		r.WriteUint8(dd.TpPid)
+		r.WriteUint8(dd.TpUdhi)
+		r.WriteUint8(dd.MsgFmt)
+		r.WriteFixedLenString(dd.SrcTerminalId, 21)
+		r.WriteUint8(dd.RegisterDelivery)
+		r.WriteUint8(dd.MsgLength)
+		r.WriteFixedLenString(dd.MsgContent, int(dd.MsgLength))
+
+		_, err := r.BytesWithLength()
+		assert.Nil(bb, err)
 
 		r.Release()
 	}
