@@ -7,24 +7,28 @@ import (
 	"unicode/utf8"
 )
 
-// IsDeliveryReceipt 根据esmClass判断是否为回执
+// IsDeliveryReceipt determines if it is a delivery receipt
 func IsDeliveryReceipt(esmClass int) bool {
 	// x x 0 0 0 0 x x，第5-2位生效，即 0011 1100=0x3c
 	// x x 0 0 0 1 x x 表示 回执(Short Message contains SMSC Delivery Receipt)
 	return esmClass&0x3c == 0x04
 }
 
-// IsLongMO 判断是否为长上行
+// IsLongMO determines if it is a long (multipart) incoming message.
 func IsLongMO(esmClass int) bool {
 	// 0 0 x x x x x x，第7-6位生效
 	// 0 1 x x x x x x 表示长上行
 	return esmClass>>6 == 0x01
 }
 
-// GenerateSourceAddress2 解析source_addr 对应的 ton 和 npi
-// - 纯数字(包括手机号 或 10DLC)，长码(长度>=10) 用 1/1，短码(长度<10) 用 3/0；
-// - 带有字母，用 5/0
-// 备注：调研过每家下游供应商对长码的判断都不一样，缺乏参考性。所以我们查询汇总了Byteplus的历史发送，取得 10 这个可信值
+// GenerateSourceAddress2 parses the ton (Type of Number) and npi (Numbering Plan Indicator)
+// corresponding to the source_addr:
+//   - Pure numbers (including mobile numbers or 10DLC) and long codes (length >= 10) use 1/1,
+//     short codes (length < 10) use 3/0.
+//   - If the source_addr contains letters, it uses 5/0.
+//
+// Note: Research shows that each downstream provider has different criteria for determining
+// long codes, which lacks reference. Here, we make a decision and set it to 10.
 func GenerateSourceAddress2(addr string) (ton, npi int, sourceAddress string) {
 	if isDigit(addr) {
 		if utf8.RuneCountInString(addr) >= 10 {
@@ -35,14 +39,13 @@ func GenerateSourceAddress2(addr string) (ton, npi int, sourceAddress string) {
 	return TON_Alphanumeric, NPI_Unknown, addr // 带字母，5/0
 }
 
-// GenerateSourceAddress 解析source_addr 对应的 ton 和 npi
-// 旧协转逻辑.
+// GenerateSourceAddress ...
+// Deprecated(use GenerateSourceAddress2).
 func GenerateSourceAddress(addr string) (ton, npi int, sourceAddress string) {
 	return getTon(addr), 0x00, addr
 }
 
-// GenerateDestAddress 解析 dest_address 对应的 ton 和 npi.
-// 旧协转逻辑.需要传入得到 addr(目标手机号) 是不带"+"的格式
+// GenerateDestAddress ...
 func GenerateDestAddress(addr string) (ton, npi int, destAddress string) {
 	return getTon(addr), 0x01, addr
 }
@@ -58,8 +61,8 @@ func getTon(address string) (ton int) {
 	}
 }
 
-// GenerateSourceAddress1 解析 source_address 对应的 ton 和 npi.
-// 另一种实现方式
+// GenerateSourceAddress1 ...
+// Deprecated(use GenerateSourceAddress2).
 func GenerateSourceAddress1(addr string) (ton, npi int, sourceAddress string) {
 	if isLetterOrDigit(addr) {
 		l := len(addr)
@@ -82,7 +85,7 @@ func GenerateSourceAddress1(addr string) (ton, npi int, sourceAddress string) {
 	}
 }
 
-// GenerateDestAddress1 解析 dest_address 对应的 ton 和 npi
+// GenerateDestAddress1 ...
 // 另一种实现方式
 func GenerateDestAddress1(addr string) (ton, npi int, destAddress string) {
 	return TON_International, NPI_ISDN, addr
@@ -102,7 +105,6 @@ func isLetterOrDigit(s string) bool {
 	return true
 }
 
-// isLetter 是否纯字母.
 func isLetter(s string) bool {
 	if len(s) == 0 {
 		return false
@@ -116,7 +118,6 @@ func isLetter(s string) bool {
 	return true
 }
 
-// isDigit 是否纯数字.
 func isDigit(s string) bool {
 	if len(s) == 0 {
 		return false
@@ -130,11 +131,7 @@ func isDigit(s string) bool {
 	return true
 }
 
-// func DecodeSMPP34(data []byte) (PduSMPP, error) {
-// 	return ParsePdu(data)
-// }
-
-// ToValidatePeriod 将相对时间描述转为 SMPP 规定的时间格式。
+// ToValidatePeriod converts a relative time description to the time format specified by the SMPP protocol.
 func ToValidatePeriod(now time.Time, v string, isRelative bool) (string, error) {
 	d, err := time.ParseDuration(v)
 	if err != nil {

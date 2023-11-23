@@ -1,7 +1,7 @@
 package cmpp20
 
 import (
-	"github.com/hujm2023/go-sms-protocol"
+	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -40,9 +40,9 @@ func (p *PduQuery) IDecode(data []byte) error {
 	b := packet.NewPacketReader(data)
 	defer b.Release()
 
-	p.Header = b.ReadHeader()
+	p.Header = cmpp.ReadHeader(b)
 	p.Time = b.ReadCStringN(8)
-	b.ReadNumeric(&p.QueryType)
+	p.QueryType = b.ReadUint8()
 	p.QueryCode = b.ReadCStringN(10)
 	p.Reserve = b.ReadCStringN(8)
 
@@ -140,18 +140,18 @@ func (p *PduQueryResp) IDecode(data []byte) error {
 	b := packet.NewPacketReader(data)
 	defer b.Release()
 
-	p.Header = b.ReadHeader()
+	p.Header = cmpp.ReadHeader(b)
 	p.Time = b.ReadCStringN(8)
-	b.ReadNumeric(&p.QueryType)
+	p.QueryType = b.ReadUint8()
 	p.QueryCode = b.ReadCStringN(10)
-	b.ReadNumeric(&p.MtTLMsg)
-	b.ReadNumeric(&p.MtTlUsr)
-	b.ReadNumeric(&p.MtScs)
-	b.ReadNumeric(&p.MtWT)
-	b.ReadNumeric(&p.MtFL)
-	b.ReadNumeric(&p.MtScs)
-	b.ReadNumeric(&p.MtWT)
-	b.ReadNumeric(&p.MtFL)
+	p.MtTLMsg = b.ReadUint32()
+	p.MtTlUsr = b.ReadUint32()
+	p.MtScs = b.ReadUint32()
+	p.MtWT = b.ReadUint32()
+	p.MtFL = b.ReadUint32()
+	p.MoScs = b.ReadUint32()
+	p.MoWT = b.ReadUint32()
+	p.MoFL = b.ReadUint32()
 
 	return b.Error()
 }

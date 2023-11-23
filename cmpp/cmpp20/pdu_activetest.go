@@ -1,7 +1,7 @@
 package cmpp20
 
 import (
-	"github.com/hujm2023/go-sms-protocol"
+	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -28,7 +28,7 @@ func (p *PduActiveTest) IDecode(data []byte) error {
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
-	p.Header = buf.ReadHeader()
+	p.Header = cmpp.ReadHeader(buf)
 
 	return buf.Error()
 }
@@ -88,8 +88,8 @@ func (pr *PduActiveTestResp) IDecode(data []byte) error {
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
-	pr.Header = buf.ReadHeader()
-	buf.ReadNumeric(&pr.Reserved)
+	pr.Header = cmpp.ReadHeader(buf)
+	pr.Reserved = buf.ReadUint8()
 
 	return buf.Error()
 }
