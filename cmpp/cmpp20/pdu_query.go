@@ -23,17 +23,17 @@ type PduQuery struct {
 }
 
 func (p *PduQuery) IEncode() ([]byte, error) {
-	p.TotalLength = MaxQueryLength
-	b := packet.NewPacketWriter(MaxQueryLength)
+	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteBytes(p.GetHeader().Bytes())
+	b.WriteUint32(uint32(p.Header.CommandID))
+	b.WriteUint32(p.Header.SequenceID)
 	b.WriteFixedLenString(p.Time, 8)
 	b.WriteUint8(p.QueryType)
 	b.WriteFixedLenString(p.QueryCode, 10)
 	b.WriteFixedLenString(p.Reserve, 8)
 
-	return b.Bytes()
+	return b.BytesWithLength()
 }
 
 func (p *PduQuery) IDecode(data []byte) error {
@@ -116,11 +116,11 @@ type PduQueryResp struct {
 }
 
 func (p *PduQueryResp) IEncode() ([]byte, error) {
-	p.TotalLength = MaxQueryRespLength
-	b := packet.NewPacketWriter(MaxQueryRespLength)
+	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteBytes(p.Header.Bytes())
+	b.WriteUint32(uint32(p.Header.CommandID))
+	b.WriteUint32(p.Header.SequenceID)
 	b.WriteFixedLenString(p.Time, 8)
 	b.WriteUint8(p.QueryType)
 	b.WriteFixedLenString(p.QueryCode, 10)
@@ -133,7 +133,7 @@ func (p *PduQueryResp) IEncode() ([]byte, error) {
 	b.WriteUint32(p.MtWT)
 	b.WriteUint32(p.MtFL)
 
-	return b.Bytes()
+	return b.BytesWithLength()
 }
 
 func (p *PduQueryResp) IDecode(data []byte) error {
@@ -154,26 +154,6 @@ func (p *PduQueryResp) IDecode(data []byte) error {
 	p.MoFL = b.ReadUint32()
 
 	return b.Error()
-}
-
-func (p *PduQueryResp) GetHeader() cmpp.Header {
-	return p.Header
-}
-
-func (p *PduQueryResp) GetSequenceID() uint32 {
-	return p.GetHeader().SequenceID
-}
-
-func (p *PduQueryResp) GetCommandID() cmpp.CommandID {
-	return cmpp.CommandQueryResp
-}
-
-func (p *PduQueryResp) GenerateResponseHeader() protocol.PDU {
-	return nil
-}
-
-func (p *PduQueryResp) MaxLength() uint32 {
-	return MaxQueryRespLength
 }
 
 func (p *PduQueryResp) SetSequenceID(sid uint32) {

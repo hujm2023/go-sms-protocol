@@ -1,13 +1,12 @@
-package cmpp20
+package cmpp30
 
 import (
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
-type PduSubmit struct {
+type Submit struct {
 	cmpp.Header
-
 	// 8 字节，信息标识，由 SP 侧短信网关本身产生， 本处填空。
 	MsgID uint64
 
@@ -29,8 +28,11 @@ type PduSubmit struct {
 	// 1 字节，计费用户类型字段：0:对目的终端MSISDN计费; 1:对源终端MSISDN计费; 2:对SP计费;3:表示本字段无效，对谁计费参见 Fee_terminal_Id 字段。
 	FeeUserType uint8
 
-	// 21 字节 数字？被计费用户的号码(如本字节填空，则表 示本字段无效，对谁计费参见 Fee_UserType 字段，本字段与 Fee_UserType 字段互斥)
+	// 32 字节 数字？被计费用户的号码(如本字节填空，则表 示本字段无效，对谁计费参见 Fee_UserType 字段，本字段与 Fee_UserType 字段互斥)
 	FeeTerminalID string
+
+	// 1 字节，被计费用户的号码类型，0：真实号码；1：伪码
+	FeeTerminalType uint8
 
 	// 1 字节，GSM 协议类型。详情请参考 GSM3.40 中的9.2.3.9: https://www.etsi.org/deliver/etsi_gts/03/0340/05.03.00_60/gsmts_0340v050300p.pdf
 	TpPID uint8
@@ -53,7 +55,7 @@ type PduSubmit struct {
 	FeeCode string
 
 	// 17 字节，存活有效期，格式遵循 SMPP3.3 协议
-	ValIDTime string
+	ValiDTime string
 
 	// 17 字节，定时发送时间，格式遵循 SMPP3.3 协议
 	AtTime string
@@ -66,8 +68,11 @@ type PduSubmit struct {
 	// 1 字节，接收信息的用户数量(小于 100 个用户)
 	DestUsrTL uint8
 
-	// 21*DestUsrTL 字节，接收短信的 MSISDN 号码(电话号码)。单个 MSISDN 长度为 21，逐个读取。
+	// 32*DestUsrTL 字节，接收短信的 MSISDN 号码(电话号码)。单个 MSISDN 长度为 32，逐个读取。
 	DestTerminalID []string
+
+	// 1字节，接收短信的用户的号码类型，0：真实号码；1：伪码
+	DestTerminalType uint8
 
 	// 1 字节，信息长度(MsgFmt=0：<160个字节；其他：<=140个字)
 	MsgLength uint8
@@ -75,93 +80,90 @@ type PduSubmit struct {
 	// MsgLength 字节，信息内容
 	MsgContent string
 
-	// 8 字节，保留
-	Reserve string
+	// 20字节，点播业务使用的 LinkID，非点播类业务的 MT 流程不使用该字段
+	LinkID string
 }
 
-func (p *PduSubmit) IEncode() ([]byte, error) {
-	if p.PkTotal == 0 && p.PkNumber == 0 {
-		p.PkTotal, p.PkNumber = 1, 1
-	}
-
-	b := packet.NewPacketWriter()
-	defer b.Release()
-
-	b.WriteUint32(uint32(p.Header.CommandID))
-	b.WriteUint32(p.Header.SequenceID)
-	b.WriteUint64(p.MsgID)
-	b.WriteUint8(p.PkTotal)
-	b.WriteUint8(p.PkNumber)
-	b.WriteUint8(p.RegisteredDelivery)
-	b.WriteUint8(p.MsgLevel)
-	b.WriteFixedLenString(p.ServiceID, 10)
-	b.WriteUint8(p.FeeUserType)
-	b.WriteFixedLenString(p.FeeTerminalID, 21)
-	b.WriteUint8(p.TpPID)
-	b.WriteUint8(p.TpUDHI)
-	b.WriteUint8(p.MsgFmt)
-	b.WriteFixedLenString(p.MsgSrc, 6)
-	b.WriteFixedLenString(p.FeeType, 2)
-	b.WriteFixedLenString(p.FeeCode, 6)
-	b.WriteFixedLenString(p.ValIDTime, 17)
-	b.WriteFixedLenString(p.AtTime, 17)
-	b.WriteFixedLenString(p.SrcID, 21)
-	b.WriteUint8(p.DestUsrTL)
-	for _, dest := range p.DestTerminalID {
-		b.WriteFixedLenString(dest, 21)
-	}
-	b.WriteUint8(p.MsgLength)
-	b.WriteString(p.MsgContent)
-	b.WriteFixedLenString(p.Reserve, 8)
-
-	return b.BytesWithLength()
-}
-
-func (p *PduSubmit) IDecode(data []byte) error {
-	if len(data) < cmpp.MinCMPPPduLength {
+func (s *Submit) IDecode(data []byte) error {
+	if len(data) < 4 {
 		return cmpp.ErrInvalidPudLength
 	}
 	b := packet.NewPacketReader(data)
 	defer b.Release()
 
-	p.Header = cmpp.ReadHeader(b)
-	p.MsgID = b.ReadUint64()
-	p.PkTotal = b.ReadUint8()
-	p.PkNumber = b.ReadUint8()
-	p.RegisteredDelivery = b.ReadUint8()
-	p.MsgLevel = b.ReadUint8()
-	p.ServiceID = b.ReadCStringN(10)
-	p.FeeUserType = b.ReadUint8()
-	p.FeeTerminalID = b.ReadCStringN(21)
-	p.TpPID = b.ReadUint8()
-	p.TpUDHI = b.ReadUint8()
-	p.MsgFmt = b.ReadUint8()
-	p.MsgSrc = b.ReadCStringN(6)
-	p.FeeType = b.ReadCStringN(2)
-	p.FeeCode = b.ReadCStringN(6)
-	p.ValIDTime = b.ReadCStringN(17)
-	p.AtTime = b.ReadCStringN(17)
-	p.SrcID = b.ReadCStringN(21)
-	p.DestUsrTL = b.ReadUint8()
-	p.DestTerminalID = make([]string, p.DestUsrTL)
-	for i := 0; i < int(p.DestUsrTL); i++ {
-		p.DestTerminalID[i] = b.ReadCStringN(21)
+	s.Header = cmpp.ReadHeader(b)
+	s.MsgID = b.ReadUint64()
+	s.PkTotal = b.ReadUint8()
+	s.PkNumber = b.ReadUint8()
+	s.RegisteredDelivery = b.ReadUint8()
+	s.MsgLevel = b.ReadUint8()
+	s.ServiceID = b.ReadCStringN(10)
+	s.FeeUserType = b.ReadUint8()
+	s.FeeTerminalID = b.ReadCStringN(32)
+	s.FeeTerminalType = b.ReadUint8()
+	s.TpPID = b.ReadUint8()
+	s.TpUDHI = b.ReadUint8()
+	s.MsgFmt = b.ReadUint8()
+	s.MsgSrc = b.ReadCStringN(6)
+	s.FeeType = b.ReadCStringN(2)
+	s.FeeCode = b.ReadCStringN(6)
+	s.ValiDTime = b.ReadCStringN(17)
+	s.AtTime = b.ReadCStringN(17)
+	s.SrcID = b.ReadCStringN(21)
+	s.DestUsrTL = b.ReadUint8()
+	s.DestTerminalID = make([]string, s.DestUsrTL)
+	for i := 0; i < int(s.DestUsrTL); i++ {
+		s.DestTerminalID[i] = b.ReadCStringN(32)
 	}
-	p.MsgLength = b.ReadUint8()
-	p.MsgContent = string(b.ReadNBytes(int(p.MsgLength)))
-	p.Reserve = b.ReadCStringN(8)
+	s.DestTerminalType = b.ReadUint8()
+	s.MsgLength = b.ReadUint8()
+	s.MsgContent = string(b.ReadNBytes(int(s.MsgLength)))
+	s.LinkID = b.ReadCStringN(20)
 
-	return b.Error()
+	return nil
 }
 
-func (p *PduSubmit) SetSequenceID(id uint32) {
-	p.Header.SequenceID = id
+func (s *Submit) IEncode() ([]byte, error) {
+	b := packet.NewPacketWriter()
+
+	b.WriteUint32(uint32(s.Header.CommandID))
+	b.WriteUint32(s.Header.SequenceID)
+	b.WriteUint64(s.MsgID)
+	b.WriteUint8(s.PkTotal)
+	b.WriteUint8(s.PkNumber)
+	b.WriteUint8(s.RegisteredDelivery)
+	b.WriteUint8(s.MsgLevel)
+	b.WriteFixedLenString(s.ServiceID, 10)
+	b.WriteUint8(s.FeeUserType)
+	b.WriteFixedLenString(s.FeeTerminalID, 32)
+	b.WriteUint8(s.FeeTerminalType)
+	b.WriteUint8(s.TpPID)
+	b.WriteUint8(s.TpUDHI)
+	b.WriteUint8(s.MsgFmt)
+	b.WriteFixedLenString(s.MsgSrc, 6)
+	b.WriteFixedLenString(s.FeeType, 2)
+	b.WriteFixedLenString(s.FeeCode, 6)
+	b.WriteFixedLenString(s.ValiDTime, 17)
+	b.WriteFixedLenString(s.AtTime, 17)
+	b.WriteFixedLenString(s.SrcID, 21)
+	b.WriteUint8(s.DestUsrTL)
+	for _, id := range s.DestTerminalID {
+		b.WriteFixedLenString(id, 32)
+	}
+	b.WriteUint8(s.DestTerminalType)
+	b.WriteUint8(s.MsgLength)
+	b.WriteFixedLenString(s.MsgContent, int(s.MsgLength))
+	b.WriteFixedLenString(s.LinkID, 20)
+
+	return b.BytesWithLength()
 }
 
-// --------------
+func (s *Submit) SetSequenceID(id uint32) {
+	s.Header.SequenceID = id
+}
 
-type PduSubmitResp struct {
-	cmpp.Header
+type SubmitResp struct {
+	Header cmpp.Header
 
 	// 8 字节，信息标识，生成算法如下:
 	// 采用 64 位(8 字节)的整数:
@@ -182,54 +184,36 @@ type PduSubmitResp struct {
 	// 1 字节，提交结果
 	// 0:正确 1:消息结构错 2:命令字错 3:消息序号重复 4:消息长度错 5:资费代码错
 	// 6:超过最大信息长 7:业务代码错 8:流量控制错 9~:其他错误
-	Result uint8
+	Result uint32
 }
 
-func (pr *PduSubmitResp) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter()
-	defer b.Release()
+func (s *SubmitResp) IDecode(data []byte) error {
+	if len(data) < cmpp.MinCMPPPduLength {
+		return cmpp.ErrInvalidPudLength
+	}
 
-	b.WriteUint32(uint32(pr.Header.CommandID))
-	b.WriteUint32(pr.Header.SequenceID)
-	b.WriteUint64(pr.MsgID)
-	b.WriteUint8(pr.Result)
-
-	return b.BytesWithLength()
-}
-
-func (pr *PduSubmitResp) IDecode(data []byte) error {
 	b := packet.NewPacketReader(data)
 	defer b.Release()
 
-	pr.Header = cmpp.ReadHeader(b)
-	pr.MsgID = b.ReadUint64()
-	pr.Result = b.ReadUint8()
+	s.Header = cmpp.ReadHeader(b)
+	s.MsgID = b.ReadUint64()
+	s.Result = b.ReadUint32()
 
 	return b.Error()
 }
 
-func (pr *PduSubmitResp) SetSequenceID(id uint32) {
-	pr.Header.SequenceID = id
+func (s *SubmitResp) IEncode() ([]byte, error) {
+	b := packet.NewPacketWriter()
+	defer b.Release()
+
+	b.WriteUint32(uint32(s.Header.CommandID))
+	b.WriteUint32(s.Header.SequenceID)
+	b.WriteUint64(s.MsgID)
+	b.WriteUint32(s.Result)
+
+	return b.BytesWithLength()
 }
 
-var submitResultString = map[uint8]string{
-	0: "正确",
-	1: "消息结构错",
-	2: "命令字错",
-	3: "消息序号重复",
-	4: "消息长度错",
-	5: "资费代码错",
-	6: "超过最大信息长",
-	7: "业务代码错",
-	8: "流量控制错",
-	9: "其他错误",
-}
-
-// SubmitRespResultString ...
-func SubmitRespResultString(n uint8) string {
-	v, ok := submitResultString[n]
-	if ok {
-		return v
-	}
-	return "其他错误"
+func (s *SubmitResp) SetSequenceID(id uint32) {
+	s.Header.SequenceID = id
 }

@@ -18,7 +18,7 @@ type Writer struct {
 	opError *packetOptError
 }
 
-func NewPacketWriter(totalLen int) *Writer {
+func NewPacketWriter(totalLen ...int) *Writer {
 	return &Writer{buf: bytebufferpool.Get()}
 }
 

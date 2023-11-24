@@ -12,8 +12,11 @@ import (
 )
 
 // NewConnect ...
-func NewConnect(account, passwd string, seqID uint32) *PduConnect {
-	t, ts := now()
+func NewConnect(account, passwd string, seqID uint32, nowFunc func() (string, uint32)) *PduConnect {
+	if nowFunc == nil {
+		nowFunc = now
+	}
+	t, ts := nowFunc()
 	md5Bytes := md5.Sum(
 		bytes.Join([][]byte{
 			[]byte(account),
@@ -52,6 +55,7 @@ func now() (string, uint32) {
 	return s, uint32(i)
 }
 
+// DecodeCMPP20 ...
 func DecodeCMPP20(data []byte) (protocol.PDU, error) {
 	header, err := cmpp.PeekHeader(data)
 	if err != nil {

@@ -1,7 +1,6 @@
 package cmpp20
 
 import (
-	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -55,12 +54,11 @@ type PduDeliver struct {
 }
 
 func (p *PduDeliver) IEncode() ([]byte, error) {
-	totalLen := HeaderLength + 8 + 21 + 10 + 1 + 1 + 1 + 21 + 1 + 1 + int(p.MsgLength) + 8
-	p.TotalLength = uint32(totalLen)
-	b := packet.NewPacketWriter(totalLen)
+	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteBytes(p.Header.Bytes())
+	b.WriteUint32(uint32(p.Header.CommandID))
+	b.WriteUint32(p.Header.SequenceID)
 	b.WriteUint64(p.MsgID)
 	b.WriteFixedLenString(p.DestID, 21)
 	b.WriteFixedLenString(p.ServiceID, 10)
@@ -73,12 +71,12 @@ func (p *PduDeliver) IEncode() ([]byte, error) {
 	b.WriteString(p.MsgContent)
 	b.WriteFixedLenString(p.Reserved, 8)
 
-	return b.Bytes()
+	return b.BytesWithLength()
 }
 
 func (p *PduDeliver) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return ErrInvalidPudLength
+		return cmpp.ErrInvalidPudLength
 	}
 
 	b := packet.NewPacketReader(data)
@@ -98,29 +96,6 @@ func (p *PduDeliver) IDecode(data []byte) error {
 	p.Reserved = b.ReadCStringN(8)
 
 	return b.Error()
-}
-
-func (p *PduDeliver) GetHeader() cmpp.Header {
-	return p.Header
-}
-
-func (p *PduDeliver) GetSequenceID() uint32 {
-	return p.GetHeader().SequenceID
-}
-
-func (p *PduDeliver) GetCommandID() cmpp.CommandID {
-	return cmpp.CommandDeliver
-}
-
-func (p *PduDeliver) GenerateResponseHeader() protocol.PDU {
-	resp := &PduDeliverResp{
-		Header: cmpp.NewHeader(MaxDeliverRespLength, cmpp.CommandDeliverResp, p.GetSequenceID()),
-	}
-	return resp
-}
-
-func (p *PduDeliver) MaxLength() uint32 {
-	return MaxDeliverLength
 }
 
 func (p *PduDeliver) SetSequenceID(sid uint32) {
@@ -143,20 +118,20 @@ type PduDeliverResp struct {
 }
 
 func (pr *PduDeliverResp) IEncode() ([]byte, error) {
-	pr.TotalLength = MaxDeliverRespLength
-	b := packet.NewPacketWriter(MaxDeliverRespLength)
+	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteBytes(pr.Header.Bytes())
+	b.WriteUint32(uint32(pr.Header.CommandID))
+	b.WriteUint32(pr.Header.SequenceID)
 	b.WriteUint64(pr.MsgID)
 	b.WriteUint8(pr.Result)
 
-	return b.Bytes()
+	return b.BytesWithLength()
 }
 
 func (pr *PduDeliverResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return ErrInvalidPudLength
+		return cmpp.ErrInvalidPudLength
 	}
 
 	b := packet.NewPacketReader(data)
@@ -167,26 +142,6 @@ func (pr *PduDeliverResp) IDecode(data []byte) error {
 	pr.Result = b.ReadUint8()
 
 	return b.Error()
-}
-
-func (pr *PduDeliverResp) GetHeader() cmpp.Header {
-	return pr.Header
-}
-
-func (pr *PduDeliverResp) GetSequenceID() uint32 {
-	return pr.GetHeader().SequenceID
-}
-
-func (pr *PduDeliverResp) GetCommandID() cmpp.CommandID {
-	return cmpp.CommandDeliverResp
-}
-
-func (pr *PduDeliverResp) GenerateResponseHeader() protocol.PDU {
-	return nil
-}
-
-func (pr *PduDeliverResp) MaxLength() uint32 {
-	return MaxDeliverRespLength
 }
 
 func (pr *PduDeliverResp) SetSequenceID(sid uint32) {
@@ -220,7 +175,7 @@ type SubPduDeliveryContent struct {
 }
 
 func (s *SubPduDeliveryContent) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter(8 + 7 + 10 + 10 + 21 + 4)
+	b := packet.NewPacketWriter()
 	defer b.Release()
 
 	b.WriteUint64(s.MsgID)
