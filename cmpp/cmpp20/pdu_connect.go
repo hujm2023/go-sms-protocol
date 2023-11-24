@@ -3,7 +3,6 @@ package cmpp20
 import (
 	"fmt"
 
-	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -25,22 +24,22 @@ type PduConnect struct {
 }
 
 func (p *PduConnect) IEncode() ([]byte, error) {
-	p.TotalLength = MaxConnectLength
-	buf := packet.NewPacketWriter(MaxConnectLength)
+	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteBytes(p.Header.Bytes())
+	buf.WriteUint32(uint32(p.Header.CommandID))
+	buf.WriteUint32(p.Header.SequenceID)
 	buf.WriteFixedLenString(p.SourceAddr, 6)
 	buf.WriteFixedLenString(p.AuthenticatorSource, 16)
 	buf.WriteUint8(p.Version)
 	buf.WriteUint32(p.Timestamp)
 
-	return buf.Bytes()
+	return buf.BytesWithLength()
 }
 
 func (p *PduConnect) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return ErrInvalidPudLength
+		return cmpp.ErrInvalidPudLength
 	}
 
 	buf := packet.NewPacketReader(data)
@@ -53,29 +52,6 @@ func (p *PduConnect) IDecode(data []byte) error {
 	p.Timestamp = buf.ReadUint32()
 
 	return buf.Error()
-}
-
-func (p *PduConnect) GetHeader() cmpp.Header {
-	return p.Header
-}
-
-func (p *PduConnect) GetSequenceID() uint32 {
-	return p.GetHeader().SequenceID
-}
-
-func (p *PduConnect) GetCommandID() cmpp.CommandID {
-	return cmpp.CommandConnect
-}
-
-func (p *PduConnect) GenerateResponseHeader() protocol.PDU {
-	resp := &PduConnectResp{
-		Header: cmpp.NewHeader(MaxConnectRespLength, cmpp.CommandConnectResp, p.GetSequenceID()),
-	}
-	return resp
-}
-
-func (p *PduConnect) MaxLength() uint32 {
-	return MaxConnectLength
 }
 
 func (p *PduConnect) SetSequenceID(sid uint32) {
@@ -98,8 +74,7 @@ type PduConnectResp struct {
 }
 
 func (pr *PduConnectResp) IEncode() ([]byte, error) {
-	pr.TotalLength = MaxConnectRespLength
-	buf := packet.NewPacketWriter(MaxConnectRespLength)
+	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
 	buf.WriteBytes(pr.Header.Bytes())
@@ -107,12 +82,12 @@ func (pr *PduConnectResp) IEncode() ([]byte, error) {
 	buf.WriteFixedLenString(pr.AuthenticatorISMG, 16)
 	buf.WriteUint8(pr.Version)
 
-	return buf.Bytes()
+	return buf.BytesWithLength()
 }
 
 func (pr *PduConnectResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return ErrInvalidPudLength
+		return cmpp.ErrInvalidPudLength
 	}
 
 	buf := packet.NewPacketReader(data)
@@ -122,26 +97,6 @@ func (pr *PduConnectResp) IDecode(data []byte) error {
 	pr.Version = buf.ReadUint8()
 
 	return buf.Error()
-}
-
-func (pr *PduConnectResp) GetHeader() cmpp.Header {
-	return pr.Header
-}
-
-func (pr *PduConnectResp) GetSequenceID() uint32 {
-	return pr.GetHeader().SequenceID
-}
-
-func (pr *PduConnectResp) GetCommandID() cmpp.CommandID {
-	return cmpp.CommandConnectResp
-}
-
-func (pr *PduConnectResp) GenerateResponseHeader() protocol.PDU {
-	return nil
-}
-
-func (pr *PduConnectResp) MaxLength() uint32 {
-	return MaxConnectRespLength
 }
 
 func (pr *PduConnectResp) SetSequenceID(sid uint32) {

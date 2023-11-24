@@ -1,11 +1,12 @@
 package cmpp
 
 import (
+	"errors"
 	"fmt"
 )
 
 const (
-	MinCMPPPduLength = HeaderLength // cmpp PduCMPP 最小的长度
+	MinCMPPPduLength = HeaderLength
 )
 
 type Version uint8
@@ -94,3 +95,15 @@ const (
 	CommandPushMtRouteUpdateResp           // MT 路由更新应答
 	CommandPushMoRouteUpdateResp           // MO 路由更新应答
 )
+
+const (
+	DELIVERED     = "DELIVRD" // 成功送达
+	UNDELIVERABLE = "UNDELIV" // 无法送达
+	EXPIRED       = "EXPIRED"
+	DELETED       = "DELETED"
+	ACCEPTED      = "ACCEPTD"
+	UNKNOWN       = "UNKNOWN"
+	REJECTED      = "REJECTD"
+)
+
+var ErrInvalidPudLength = errors.New("invalid pdu length")

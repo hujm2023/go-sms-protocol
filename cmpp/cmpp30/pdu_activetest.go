@@ -1,15 +1,15 @@
-package cmpp20
+package cmpp30
 
 import (
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
-type PduActiveTest struct {
+type ActiveTest struct {
 	cmpp.Header
 }
 
-func (p *PduActiveTest) IEncode() ([]byte, error) {
+func (p *ActiveTest) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
@@ -19,7 +19,7 @@ func (p *PduActiveTest) IEncode() ([]byte, error) {
 	return buf.BytesWithLength()
 }
 
-func (p *PduActiveTest) IDecode(data []byte) error {
+func (p *ActiveTest) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
 	}
@@ -32,30 +32,29 @@ func (p *PduActiveTest) IDecode(data []byte) error {
 	return buf.Error()
 }
 
-func (p *PduActiveTest) SetSequenceID(sid uint32) {
-	p.Header.SequenceID = sid
+func (p *ActiveTest) SetSequenceID(id uint32) {
+	p.Header.SequenceID = id
 }
 
-// --------------------------------------------------------------------
-
-type PduActiveTestResp struct {
+type ActiveTestResp struct {
 	cmpp.Header
 
 	// 1 字节，保留字段
 	Reserved uint8
 }
 
-func (pr *PduActiveTestResp) IEncode() ([]byte, error) {
+func (pr *ActiveTestResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteBytes(pr.Header.Bytes())
+	buf.WriteUint32(uint32(pr.Header.CommandID))
+	buf.WriteUint32(pr.Header.SequenceID)
 	buf.WriteUint8(pr.Reserved)
 
 	return buf.BytesWithLength()
 }
 
-func (pr *PduActiveTestResp) IDecode(data []byte) error {
+func (pr *ActiveTestResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
 	}
@@ -69,6 +68,6 @@ func (pr *PduActiveTestResp) IDecode(data []byte) error {
 	return buf.Error()
 }
 
-func (pr *PduActiveTestResp) SetSequenceID(sid uint32) {
+func (pr *ActiveTestResp) SetSequenceID(sid uint32) {
 	pr.Header.SequenceID = sid
 }
