@@ -1,9 +1,8 @@
 package datacoding
 
 import (
+	"errors"
 	"math"
-
-	"github.com/pkg/errors"
 )
 
 const (
