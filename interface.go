@@ -1,20 +1,22 @@
 package protocol
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrPacketNotComplete = errors.New("packet not completed")
 	ErrUnsupportedPacket = errors.New("unsupported packed")
 )
 
-// PDU 表示标准协议的包(所有标准协议pdu都需要实现)
+// PDU stands for Protocol Data Unit, which is the package for standard SMS protocols.
 type PDU interface {
-	// IEncode 序列化
+	// IEncode serializes a PDU into binary.
 	IEncode() ([]byte, error)
 
-	// IDecode 反序列
+	// IDecode deserializes binary into a PDU.
 	IDecode(data []byte) error
 
-	// SetSequenceID 为 PDU 设置提交时的 seqID
+	// SetSequenceID sets sequenceID for a PDU.
 	SetSequenceID(id uint32)
 }

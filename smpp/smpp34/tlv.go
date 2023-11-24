@@ -2,9 +2,8 @@ package smpp34
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
-
-	"github.com/pkg/errors"
 
 	"github.com/hujm2023/go-sms-protocol/packet"
 )

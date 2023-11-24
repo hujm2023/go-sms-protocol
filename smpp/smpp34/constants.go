@@ -1,7 +1,7 @@
 package smpp34
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 var ErrInvalidPudLength = errors.New("invalid pdu length")
