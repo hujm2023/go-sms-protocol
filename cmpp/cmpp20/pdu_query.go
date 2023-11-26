@@ -1,7 +1,6 @@
 package cmpp20
 
 import (
-	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -26,8 +25,7 @@ func (p *PduQuery) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(p.Header.CommandID))
-	b.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, b)
 	b.WriteFixedLenString(p.Time, 8)
 	b.WriteUint8(p.QueryType)
 	b.WriteFixedLenString(p.QueryCode, 10)
@@ -47,29 +45,6 @@ func (p *PduQuery) IDecode(data []byte) error {
 	p.Reserve = b.ReadCStringN(8)
 
 	return b.Error()
-}
-
-func (p *PduQuery) GetHeader() cmpp.Header {
-	return p.Header
-}
-
-func (p *PduQuery) GetSequenceID() uint32 {
-	return p.GetHeader().SequenceID
-}
-
-func (p *PduQuery) GetCommandID() cmpp.CommandID {
-	return cmpp.CommandQuery
-}
-
-func (p *PduQuery) GenerateResponseHeader() protocol.PDU {
-	resp := &PduQueryResp{
-		Header: cmpp.NewHeader(MaxQueryRespLength, cmpp.CommandQueryResp, p.GetSequenceID()),
-	}
-	return resp
-}
-
-func (p *PduQuery) MaxLength() uint32 {
-	return MaxQueryLength
 }
 
 func (p *PduQuery) SetSequenceID(sid uint32) {
@@ -119,8 +94,7 @@ func (p *PduQueryResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(p.Header.CommandID))
-	b.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, b)
 	b.WriteFixedLenString(p.Time, 8)
 	b.WriteUint8(p.QueryType)
 	b.WriteFixedLenString(p.QueryCode, 10)

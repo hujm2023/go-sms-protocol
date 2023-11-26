@@ -1,13 +1,12 @@
-package smpp34
+package smpp50
 
 import (
 	"bytes"
 	"testing"
 
+	"github.com/hujm2023/go-sms-protocol/smpp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
 type DeliverSmTestSuite struct {
@@ -55,10 +54,10 @@ func (s *DeliverSmTestSuite) TestDeliverSM_IEncode() {
 		RegisteredDelivery:   1,
 		ReplaceIfPresentFlag: 1,
 		DataCoding:           1,
-		SmDefaultMsgId:       1,
+		SmDefaultMsgID:       1,
 		SmLength:             uint8(len([]byte(s.shortMessageString))),
 		ShortMessage:         []byte(s.shortMessageString),
-		tlvs: map[uint16]smpp.TLV{
+		tlv: map[uint16]smpp.TLV{
 			smpp.RECEIPTED_MESSAGE_ID: smpp.NewTLVS(smpp.RECEIPTED_MESSAGE_ID, s.msgID),
 		},
 	}
@@ -76,7 +75,7 @@ func (s *DeliverSmTestSuite) TestDeliverSM_SetSequenceID() {
 	assert.Equal(s.T(), s.destAddr, d.DestinationAddr)
 	assert.Equal(s.T(), s.shortMessageString, string(d.ShortMessage))
 
-	tlv, ok := d.tlvs[smpp.RECEIPTED_MESSAGE_ID]
+	tlv, ok := d.tlv[smpp.RECEIPTED_MESSAGE_ID]
 	assert.True(s.T(), ok)
 	assert.Equal(s.T(), s.msgID, string(tlv.Value))
 }

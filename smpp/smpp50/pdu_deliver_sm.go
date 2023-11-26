@@ -1,4 +1,4 @@
-package smpp34
+package smpp50
 
 import (
 	"github.com/hujm2023/go-sms-protocol/packet"
@@ -13,39 +13,29 @@ type DeliverSm struct {
 
 	SourceAddrTon uint8
 	SourceAddrNpi uint8
-	// CString, max 21
-	SourceAddr string
+	SourceAddr    string // CString, max 21
 
-	DestAddrTon uint8
-	DestAddrNpi uint8
-	// CString, max 21
-	DestinationAddr string
+	DestAddrTon     uint8
+	DestAddrNpi     uint8
+	DestinationAddr string // CString, max 21
 
-	ESMClass     uint8
-	ProtocolID   uint8
-	PriorityFlag uint8
-
-	// CString, max 17
-	ScheduleDeliveryTime string
-
-	// CString, max 17
-	ValidityPeriod string
+	ESMClass             uint8
+	ProtocolID           uint8
+	PriorityFlag         uint8
+	ScheduleDeliveryTime string // ptime, 1 or max 17
+	ValidityPeriod       string // ptime, 1 or max 17
 
 	RegisteredDelivery   uint8
 	ReplaceIfPresentFlag uint8
 	DataCoding           uint8
-	SmDefaultMsgId       uint8
+	SmDefaultMsgID       uint8
+	SmLength             uint8
+	ShortMessage         []byte // max 255
 
-	SmLength     uint8
-	ShortMessage []byte
-
-	tlvs smpp.TLVs
+	tlv smpp.TLVs
 }
 
 func (d *DeliverSm) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
-	}
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
@@ -65,24 +55,19 @@ func (d *DeliverSm) IDecode(data []byte) error {
 	d.RegisteredDelivery = buf.ReadUint8()
 	d.ReplaceIfPresentFlag = buf.ReadUint8()
 	d.DataCoding = buf.ReadUint8()
-	d.SmDefaultMsgId = buf.ReadUint8()
+	d.SmDefaultMsgID = buf.ReadUint8()
 	d.SmLength = buf.ReadUint8()
-	temp := make([]byte, d.SmLength)
-	buf.ReadBytes(temp)
-	d.ShortMessage = temp
-	d.tlvs = smpp.ReadTLVs1(buf)
+	d.ShortMessage = buf.ReadNBytes(int(d.SmLength))
+	d.tlv = smpp.ReadTLVs1(buf)
 
 	return buf.Error()
 }
 
 func (d *DeliverSm) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter(0)
+	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(d.Header.ID))
-	buf.WriteUint32(uint32(d.Header.Status))
-	buf.WriteUint32(d.Header.Sequence)
-
+	smpp.WriteHeaderNoLength(d.Header, buf)
 	buf.WriteCString(d.ServiceType)
 	buf.WriteUint8(d.SourceAddrTon)
 	buf.WriteUint8(d.SourceAddrNpi)
@@ -98,10 +83,10 @@ func (d *DeliverSm) IEncode() ([]byte, error) {
 	buf.WriteUint8(d.RegisteredDelivery)
 	buf.WriteUint8(d.ReplaceIfPresentFlag)
 	buf.WriteUint8(d.DataCoding)
-	buf.WriteUint8(d.SmDefaultMsgId)
+	buf.WriteUint8(d.SmDefaultMsgID)
 	buf.WriteUint8(d.SmLength)
 	buf.WriteBytes(d.ShortMessage)
-	buf.WriteBytes(d.tlvs.Bytes())
+	buf.WriteBytes(d.tlv.Bytes())
 
 	return buf.BytesWithLength()
 }
@@ -113,29 +98,30 @@ func (d *DeliverSm) SetSequenceID(id uint32) {
 type DeliverSMResp struct {
 	smpp.Header
 
-	// CString, size 1, unused, set to null
+	// CString, max 65
 	MessageID string
+
+	tlvs smpp.TLVs
 }
 
 func (d *DeliverSMResp) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
-	}
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
 	d.Header = smpp.ReadHeader(buf)
 	d.MessageID = buf.ReadCString()
+	d.tlvs = smpp.ReadTLVs1(buf)
+
 	return buf.Error()
 }
 
 func (d *DeliverSMResp) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter(0)
+	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(d.Header, buf)
-
 	buf.WriteCString(d.MessageID)
+	buf.WriteBytes(d.tlvs.Bytes())
 
 	return buf.BytesWithLength()
 }

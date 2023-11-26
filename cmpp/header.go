@@ -16,7 +16,7 @@ const (
 
 var ErrIllegalHeaderLength = errors.New("cmpp2 header length is invalid")
 
-// Header CMPP PduCMPP 的公共 header
+// Header for CMPP.
 type Header struct {
 	// 4 字节，消息总长度
 	TotalLength uint32
@@ -81,4 +81,15 @@ func ReadHeader(r *packet.Reader) Header {
 	h.CommandID = CommandID(r.ReadUint32())
 	h.SequenceID = r.ReadUint32()
 	return h
+}
+
+func WriteHeader(h Header, buf *packet.Writer) {
+	buf.WriteUint32(h.TotalLength)
+	buf.WriteUint32(uint32(h.CommandID))
+	buf.WriteUint32(h.SequenceID)
+}
+
+func WriteHeaderNoLength(h Header, buf *packet.Writer) {
+	buf.WriteUint32(uint32(h.CommandID))
+	buf.WriteUint32(h.SequenceID)
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hujm2023/go-sms-protocol/smpp/smpp34"
+	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
 type SMPPCodec struct{}
@@ -18,8 +18,8 @@ func NewSMPPCodec() *SMPPCodec {
 // reading a complete SMPP packet from the ConnReader.
 // If the data is incomplete, it will return ErrPacketNotComplete.
 func (cc *SMPPCodec) Decode(c ConnReader) ([]byte, error) {
-	totalLenBytes, _ := c.Peek(smpp34.MinSMPPHeaderLen)
-	if len(totalLenBytes) < smpp34.MinSMPPHeaderLen {
+	totalLenBytes, _ := c.Peek(smpp.MinSMPPHeaderLen)
+	if len(totalLenBytes) < smpp.MinSMPPHeaderLen {
 		return nil, ErrPacketNotComplete
 	}
 
@@ -45,7 +45,7 @@ func (cc *SMPPCodec) Decode(c ConnReader) ([]byte, error) {
 }
 
 func (cc *SMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
-	totalLenBytes := make([]byte, smpp34.MinSMPPHeaderLen)
+	totalLenBytes := make([]byte, smpp.MinSMPPHeaderLen)
 	_, err := io.ReadFull(c, totalLenBytes)
 	if err != nil {
 		return nil, err
@@ -53,11 +53,11 @@ func (cc *SMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
 	totalLen := int(binary.BigEndian.Uint32(totalLenBytes))
 
 	left := make([]byte, totalLen)
-	_, err = io.ReadFull(c, left[smpp34.MinSMPPHeaderLen:])
+	_, err = io.ReadFull(c, left[smpp.MinSMPPHeaderLen:])
 	if err != nil {
 		return nil, err
 	}
-	copy(left[:smpp34.MinSMPPHeaderLen], totalLenBytes)
+	copy(left[:smpp.MinSMPPHeaderLen], totalLenBytes)
 
 	return left, nil
 }

@@ -87,8 +87,7 @@ func (p *PduSubmit) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(p.Header.CommandID))
-	b.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, b)
 	b.WriteUint64(p.MsgID)
 	b.WriteUint8(p.PkTotal)
 	b.WriteUint8(p.PkNumber)
@@ -189,8 +188,7 @@ func (pr *PduSubmitResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(pr.Header.CommandID))
-	b.WriteUint32(pr.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(pr.Header, b)
 	b.WriteUint64(pr.MsgID)
 	b.WriteUint8(pr.Result)
 
