@@ -11,9 +11,23 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/hujm2023/go-sms-protocol/datacoding"
-	encoding "github.com/hujm2023/go-sms-protocol/datacoding/gsm7encoding"
+	gsm7 "github.com/hujm2023/go-sms-protocol/datacoding/gsm7encoding"
 	"github.com/hujm2023/go-sms-protocol/logger"
 )
+
+// Protocol represents the enumeration values for supported protocol types.
+type Protocol string
+
+const (
+	CMPP Protocol = "CMPP"
+	SMPP Protocol = "SMPP"
+	SMGP Protocol = "SMGP"
+	SGIP Protocol = "SGIP"
+)
+
+func (p Protocol) String() string {
+	return string(p)
+}
 
 // BatchDataCodingEncoder ...
 type BatchDataCodingEncoder struct {
@@ -138,15 +152,15 @@ func (b *BatchDataCodingEncoder) Build(ctx context.Context) (contents [][]byte, 
 
 type encoder struct {
 	protocol       Protocol                      // protocol
-	msgFmt         datacoding.ProtocolDataCoding // 编码
-	content        string                        //  原始内容
+	msgFmt         datacoding.ProtocolDataCoding // encoding
+	content        string                        // source content
 	frameKey       byte                          // frameKey
-	isOriginMsgFmt bool                          // 是否原始配置中的 msgFmt
+	isOriginMsgFmt bool                          // whether s it the msgFmt from the original configuration
 
-	canEncode bool   // 能否用当前的 msgFmt 编码
-	reason    string // 不能编码的原因
+	canEncode bool   // Can the current msgFmt be used for encoding?
+	reason    string // Reasons for the inability to encode
 
-	data [][]byte // 编码后的内容。 canEncode=true时有效
+	data [][]byte // Encoded content. Valid when canEncode is true.
 }
 
 func newBatchEncoder(protocol Protocol, msgFmt datacoding.ProtocolDataCoding, content string, frameKey byte, isOriginMsgFmt bool) *encoder {
@@ -177,7 +191,7 @@ func (s *encoder) Run(ctx context.Context) {
 		return
 	}
 
-	// gsm7(packed) 特殊处理
+	// Special handling for GSM7 (packed)
 	if s.msgFmt == datacoding.SMPP_CODING_GSM7_PACKED {
 		if datacoding.CanEncodeByGSM7(s.content) {
 			contents, _, err := encodeAndSplitGSM7Packed(s.content, s.frameKey)
@@ -190,7 +204,7 @@ func (s *encoder) Run(ctx context.Context) {
 			s.data = contents
 		} else {
 			s.canEncode = false
-			s.reason = encoding.ErrInvalidCharacter.Error()
+			s.reason = gsm7.ErrInvalidCharacter.Error()
 		}
 		return
 	}
@@ -205,7 +219,7 @@ func (s *encoder) Run(ctx context.Context) {
 	s.canEncode = true
 
 	maxLongLength, perMsgLength := encoder.SplitBy()
-	// 短短信
+	// short message
 	if len(encodedData) <= maxLongLength {
 		s.data = [][]byte{encodedData}
 		return
@@ -229,30 +243,32 @@ func (s *encoder) Result() (contents [][]byte, actualMsgFmt datacoding.ProtocolD
 
 type encoderCompareFunc func(p, q *encoder) bool
 
-// byLength 根据编码后的长度顺序
+// byLength: Ordered by encoded length
 func byLength(p, q *encoder) bool {
-	// 帮助理解：p 的编码长度小，使用 p
+	// tips: the length of 'p' is smaller, so 'p' is used.
 	return len(p.data) < len(q.data)
 }
 
-// byDataCoding 按照编码优先级顺序
+// byDataCoding: Ordered by dataCoding's priority
 func byDataCoding(p, q *encoder) bool {
-	// UCS2>GSM>latin1>其他
-	// Priority 返回一个数值，值越小，优先级越高.
-	// 帮助理解：p的Priority()小，优先级高，使用 p
+	// UCS2>GSM>latin1>other
+	// Priority returns a numerical value, where a smaller value indicates a higher priority.
+	// tips: When the Priority() of 'p' is smaller, it means it has a higher priority and will be used.
 	return p.msgFmt.Priority() < q.msgFmt.Priority()
 }
 
 type batchEncoderSorter struct {
-	encoders     []*encoder           // 需要比较的对象
-	compareFuncs []encoderCompareFunc // 比较函数。按数组顺序逐个比较
+	// encoders
+	encoders []*encoder
+	// Specific function used for comparison. Compares elements one by one in array order.
+	compareFuncs []encoderCompareFunc
 }
 
 func encoderOrderBy(by ...encoderCompareFunc) *batchEncoderSorter {
 	return &batchEncoderSorter{compareFuncs: by}
 }
 
-// Sort 对传入的encoders进行排序
+// Sort sorts the encoders with `compareFuncs`.
 func (b *batchEncoderSorter) Sort(encoders []*encoder) {
 	b.encoders = encoders
 	sort.Sort(b)
@@ -267,8 +283,9 @@ func (b *batchEncoderSorter) Less(i, j int) bool {
 		return false
 	}
 
+	// Performs comparisons one by one according to the array order
+	// for the first `len(b.compareFuncs)-1` `compareFunc`
 	var idx int
-	// 按数组顺序逐个进行前 `len(b.compareFuncs)-1`` 个 `compareFunc` 的比较
 	for idx = 0; idx < len(b.compareFuncs)-1; idx++ {
 		less := b.compareFuncs[idx]
 		switch {
@@ -277,10 +294,11 @@ func (b *batchEncoderSorter) Less(i, j int) bool {
 		case less(b.encoders[j], b.encoders[i]):
 			return false
 		}
-		// 对于当前 less，对比条件相同，继续下一个 compareFunc
+		// For the current 'less', when the comparison conditions are the same, proceed to the next 'compareFunc'.
 		continue
 	}
-	// 前面的 compareFuncs 都相等，使用最后一个的结果作为兜底
+
+	// When all preceding compareFuncs are equal, use the result of the last one as a fallback.
 	return b.compareFuncs[idx](b.encoders[i], b.encoders[j])
 }
 

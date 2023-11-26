@@ -5,7 +5,6 @@ import (
 )
 
 var (
-	ErrPacketNotComplete = errors.New("packet not completed")
 	ErrUnsupportedPacket = errors.New("unsupported packed")
 )
 
