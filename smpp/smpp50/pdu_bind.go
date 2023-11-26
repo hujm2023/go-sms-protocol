@@ -65,7 +65,7 @@ type BindResp struct {
 	// CString, max 16
 	SystemID string
 
-	tlvs map[uint16]smpp.TLV
+	tlvs smpp.TLVs
 }
 
 func (b *BindResp) IDecode(data []byte) error {
@@ -74,11 +74,7 @@ func (b *BindResp) IDecode(data []byte) error {
 
 	b.Header = smpp.ReadHeader(buf)
 	b.SystemID = buf.ReadCString()
-	tlv, err := smpp.ReadTLVs(buf)
-	if err != nil {
-		return err
-	}
-	b.tlvs = tlv
+	b.tlvs = smpp.ReadTLVs1(buf)
 
 	return buf.Error()
 }
@@ -89,10 +85,7 @@ func (b *BindResp) IEncode() ([]byte, error) {
 
 	smpp.WriteHeaderNoLength(b.Header, buf)
 	buf.WriteCString(b.SystemID)
-	for _, value := range b.tlvs {
-		buf.WriteBytes(value.Bytes())
-	}
-
+	buf.WriteBytes(b.tlvs.Bytes())
 	return buf.BytesWithLength()
 }
 
