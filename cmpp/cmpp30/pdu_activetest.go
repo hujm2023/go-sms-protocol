@@ -13,8 +13,7 @@ func (p *ActiveTest) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(p.Header.CommandID))
-	buf.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, buf)
 
 	return buf.BytesWithLength()
 }
@@ -47,8 +46,7 @@ func (pr *ActiveTestResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(pr.Header.CommandID))
-	buf.WriteUint32(pr.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(pr.Header, buf)
 	buf.WriteUint8(pr.Reserved)
 
 	return buf.BytesWithLength()

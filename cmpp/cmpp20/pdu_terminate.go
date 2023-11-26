@@ -13,8 +13,7 @@ func (p *PduTerminate) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(p.Header.CommandID))
-	buf.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, buf)
 
 	return buf.BytesWithLength()
 }

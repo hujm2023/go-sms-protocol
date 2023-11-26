@@ -1,4 +1,4 @@
-package smpp34
+package smpp
 
 import (
 	"fmt"
@@ -32,6 +32,19 @@ func ReadHeader(r *packet.Reader) Header {
 	h.Status = CMDStatus(r.ReadUint32())
 	h.Sequence = r.ReadUint32()
 	return h
+}
+
+func WriteHeader(h Header, w *packet.Writer) {
+	w.WriteUint32(h.Length)
+	w.WriteUint32(uint32(h.ID))
+	w.WriteUint32(uint32(h.Status))
+	w.WriteUint32(h.Sequence)
+}
+
+func WriteHeaderNoLength(h Header, buf *packet.Writer) {
+	buf.WriteUint32(uint32(h.ID))
+	buf.WriteUint32(uint32(h.Status))
+	buf.WriteUint32(h.Sequence)
 }
 
 func (s CMDId) Error() string {

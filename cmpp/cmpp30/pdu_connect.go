@@ -41,8 +41,7 @@ func (p *Connect) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(p.Header.CommandID))
-	buf.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, buf)
 	buf.WriteFixedLenString(p.SourceAddr, 6)
 	buf.WriteFixedLenString(p.AuthenticatorSource, 16)
 	buf.WriteUint8(p.Version)
@@ -86,8 +85,7 @@ func (c *ConnectResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(c.Header.CommandID))
-	buf.WriteUint32(c.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(c.Header, buf)
 	buf.WriteUint32(c.Status)
 	buf.WriteFixedLenString(c.AuthenticatorISMG, 16)
 	buf.WriteUint8(c.Version)

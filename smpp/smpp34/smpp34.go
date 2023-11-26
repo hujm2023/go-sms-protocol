@@ -5,6 +5,8 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
 // IsDeliveryReceipt determines if it is a delivery receipt
@@ -32,11 +34,11 @@ func IsLongMO(esmClass int) bool {
 func GenerateSourceAddress2(addr string) (ton, npi int, sourceAddress string) {
 	if isDigit(addr) {
 		if utf8.RuneCountInString(addr) >= 10 {
-			return TON_International, NPI_ISDN, addr // 纯数字，长码，1/1
+			return smpp.TON_International, smpp.NPI_ISDN, addr // 纯数字，长码，1/1
 		}
-		return TON_NetworkSpecific, NPI_Unknown, addr // 纯数字，短码，3/0
+		return smpp.TON_NetworkSpecific, smpp.NPI_Unknown, addr // 纯数字，短码，3/0
 	}
-	return TON_Alphanumeric, NPI_Unknown, addr // 带字母，5/0
+	return smpp.TON_Alphanumeric, smpp.NPI_Unknown, addr // 带字母，5/0
 }
 
 // GenerateSourceAddress ...
@@ -53,11 +55,11 @@ func GenerateDestAddress(addr string) (ton, npi int, destAddress string) {
 func getTon(address string) (ton int) {
 	if isDigit(address) {
 		if len(address) >= 10 {
-			return TON_International // "E.164 格式" 1
+			return smpp.TON_International // "E.164 格式" 1
 		}
-		return TON_Abbreviated // "简短的" 6
+		return smpp.TON_Abbreviated // "简短的" 6
 	} else {
-		return TON_Alphanumeric // "其他格式，数字字母组合" 5
+		return smpp.TON_Alphanumeric // "其他格式，数字字母组合" 5
 	}
 }
 
@@ -69,26 +71,26 @@ func GenerateSourceAddress1(addr string) (ton, npi int, sourceAddress string) {
 		if isDigit(addr) /*纯数字*/ {
 			// 长度大于 0，一般是"+"开头的手机号
 			if l >= 10 {
-				return TON_International, NPI_ISDN, addr // ton=1,npi=1
+				return smpp.TON_International, smpp.NPI_ISDN, addr // ton=1,npi=1
 			}
 			// 其他 case
-			return TON_Abbreviated, NPI_Unknown, addr // ton=6,npi=0
+			return smpp.TON_Abbreviated, smpp.NPI_Unknown, addr // ton=6,npi=0
 		} else {
 			// // short_code
 			// if l >= 4 && l <= 6 {
 			// 	return TON_NetworkSpecific, NPI_Unknown // ton=3,npi=0
 			// }
-			return TON_Alphanumeric, NPI_Unknown, addr // ton=5,npi=0
+			return smpp.TON_Alphanumeric, smpp.NPI_Unknown, addr // ton=5,npi=0
 		}
 	} else {
-		return TON_Unknown, NPI_ISDN, addr // ton=0,npi=1
+		return smpp.TON_Unknown, smpp.NPI_ISDN, addr // ton=0,npi=1
 	}
 }
 
 // GenerateDestAddress1 ...
 // 另一种实现方式
 func GenerateDestAddress1(addr string) (ton, npi int, destAddress string) {
-	return TON_International, NPI_ISDN, addr
+	return smpp.TON_International, smpp.NPI_ISDN, addr
 }
 
 // isLetterOrDigit 是否由数字字母组成.

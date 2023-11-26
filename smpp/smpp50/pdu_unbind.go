@@ -1,4 +1,4 @@
-package smpp34
+package smpp50
 
 import (
 	"github.com/hujm2023/go-sms-protocol/packet"
@@ -7,24 +7,32 @@ import (
 
 type Unbind struct {
 	smpp.Header
+
+	// CString, max 16
+	SystemID string
+
+	// CString, max 9
+	Password string
 }
 
 func (u *Unbind) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
-	}
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
 	u.Header = smpp.ReadHeader(buf)
+	u.SystemID = buf.ReadCString()
+	u.Password = buf.ReadCString()
+
 	return buf.Error()
 }
 
 func (u *Unbind) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter(0)
+	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(u.Header, buf)
+	buf.WriteCString(u.SystemID)
+	buf.WriteCString(u.Password)
 
 	return buf.BytesWithLength()
 }
@@ -33,23 +41,21 @@ func (u *Unbind) SetSequenceID(id uint32) {
 	u.Header.Sequence = id
 }
 
-type UnBindResp struct {
+type UnbindResp struct {
 	smpp.Header
 }
 
-func (u *UnBindResp) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
-	}
+func (u *UnbindResp) IDecode(data []byte) error {
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
 	u.Header = smpp.ReadHeader(buf)
+
 	return buf.Error()
 }
 
-func (u *UnBindResp) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter(0)
+func (u *UnbindResp) IEncode() ([]byte, error) {
+	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(u.Header, buf)
@@ -57,6 +63,6 @@ func (u *UnBindResp) IEncode() ([]byte, error) {
 	return buf.BytesWithLength()
 }
 
-func (u *UnBindResp) SetSequenceID(id uint32) {
+func (u *UnbindResp) SetSequenceID(id uint32) {
 	u.Header.Sequence = id
 }

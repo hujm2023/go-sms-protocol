@@ -41,8 +41,7 @@ func (q *Query) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(q.Header.CommandID))
-	b.WriteUint32(q.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(q.Header, b)
 	b.WriteFixedLenString(q.Time, 8)
 	b.WriteUint8(q.QueryType)
 	b.WriteFixedLenString(q.QueryCode, 10)
@@ -119,8 +118,7 @@ func (q *QueryResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(q.Header.CommandID))
-	b.WriteUint32(q.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(q.Header, b)
 	b.WriteFixedLenString(q.Time, 8)
 	b.WriteUint8(q.QueryType)
 	b.WriteFixedLenString(q.QueryCode, 10)

@@ -1,4 +1,4 @@
-package smpp34
+package smpp50
 
 import (
 	"github.com/hujm2023/go-sms-protocol/packet"
@@ -8,30 +8,22 @@ import (
 type Bind struct {
 	smpp.Header
 
-	// CString, max 16,Identifies the ESME system requesting to bind as a receiver with the SMSC.
+	// CString, max 16
 	SystemID string
-
 	// CString, max 9
 	Password string
-
 	// CString, max 13
 	SystemType string
 
 	InterfaceVersion uint8
-
-	AddrTon uint8
-
-	AddrNpi uint8
+	AddrTon          uint8
+	AddrNpi          uint8
 
 	// CString, max 41
 	AddressRange string
 }
 
 func (b *Bind) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
-	}
-
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
@@ -48,11 +40,10 @@ func (b *Bind) IDecode(data []byte) error {
 }
 
 func (b *Bind) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter(0)
+	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(b.Header, buf)
-
 	buf.WriteCString(b.SystemID)
 	buf.WriteCString(b.Password)
 	buf.WriteCString(b.SystemType)
@@ -74,37 +65,35 @@ type BindResp struct {
 	// CString, max 16
 	SystemID string
 
-	tlv smpp.TLVs
-}
-
-func (b *BindResp) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter(0)
-	defer buf.Release()
-
-	smpp.WriteHeaderNoLength(b.Header, buf)
-
-	buf.WriteCString(b.SystemID)
-
-	buf.WriteBytes(b.tlv.Bytes())
-
-	return buf.BytesWithLength()
+	tlvs map[uint16]smpp.TLV
 }
 
 func (b *BindResp) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
-	}
-
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
 	b.Header = smpp.ReadHeader(buf)
-
 	b.SystemID = buf.ReadCString()
-
-	b.tlv = smpp.ReadTLVs1(buf)
+	tlv, err := smpp.ReadTLVs(buf)
+	if err != nil {
+		return err
+	}
+	b.tlvs = tlv
 
 	return buf.Error()
+}
+
+func (b *BindResp) IEncode() ([]byte, error) {
+	buf := packet.NewPacketWriter()
+	defer buf.Release()
+
+	smpp.WriteHeaderNoLength(b.Header, buf)
+	buf.WriteCString(b.SystemID)
+	for _, value := range b.tlvs {
+		buf.WriteBytes(value.Bytes())
+	}
+
+	return buf.BytesWithLength()
 }
 
 func (b *BindResp) SetSequenceID(id uint32) {

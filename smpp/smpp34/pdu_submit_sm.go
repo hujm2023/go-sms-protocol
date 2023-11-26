@@ -2,10 +2,11 @@ package smpp34
 
 import (
 	"github.com/hujm2023/go-sms-protocol/packet"
+	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
 type SubmitSm struct {
-	Header
+	smpp.Header
 
 	// CString, max 6
 	ServiceType string
@@ -39,14 +40,14 @@ type SubmitSm struct {
 	// Uint8, max 254
 	ShortMessage []byte
 
-	tlvs map[uint16]TLV
+	tlvs smpp.TLVs
 }
 
 func (s *SubmitSm) IDecode(data []byte) error {
 	r := packet.NewPacketReader(data)
 	defer r.Release()
 
-	s.Header = ReadHeader(r)
+	s.Header = smpp.ReadHeader(r)
 	s.ServiceType = r.ReadCString()
 	s.SourceAddrTon = r.ReadUint8()
 	s.SourceAddrNpi = r.ReadUint8()
@@ -67,12 +68,7 @@ func (s *SubmitSm) IDecode(data []byte) error {
 	temp := make([]byte, s.SmLength)
 	r.ReadBytes(temp)
 	s.ShortMessage = temp
-
-	tlv, err := ReadTLVs(r)
-	if err != nil {
-		return err
-	}
-	s.tlvs = tlv
+	s.tlvs = smpp.ReadTLVs1(r)
 
 	return r.Error()
 }
@@ -81,9 +77,7 @@ func (s *SubmitSm) IEncode() ([]byte, error) {
 	w := packet.NewPacketWriter(0)
 	defer w.Release()
 
-	w.WriteUint32(uint32(s.Header.ID))
-	w.WriteUint32(uint32(s.Header.Status))
-	w.WriteUint32(s.Header.Sequence)
+	smpp.WriteHeaderNoLength(s.Header, w)
 
 	w.WriteCString(s.ServiceType)
 	w.WriteUint8(s.SourceAddrTon)
@@ -103,10 +97,7 @@ func (s *SubmitSm) IEncode() ([]byte, error) {
 	w.WriteUint8(s.SmDefaultMsgID)
 	w.WriteUint8(s.SmLength)
 	w.WriteBytes(s.ShortMessage)
-
-	for _, tlv := range s.tlvs {
-		w.WriteBytes(tlv.Bytes())
-	}
+	w.WriteBytes(s.tlvs.Bytes())
 
 	return w.BytesWithLength()
 }
@@ -116,7 +107,7 @@ func (s *SubmitSm) SetSequenceID(id uint32) {
 }
 
 type SubmitSMResp struct {
-	Header
+	smpp.Header
 	// CString, max 65
 	MessageID string
 }
@@ -125,7 +116,7 @@ func (s *SubmitSMResp) IDecode(data []byte) error {
 	r := packet.NewPacketReader(data)
 	defer r.Release()
 
-	s.Header = ReadHeader(r)
+	s.Header = smpp.ReadHeader(r)
 	s.MessageID = r.ReadCString()
 
 	return r.Error()
@@ -135,9 +126,7 @@ func (s *SubmitSMResp) IEncode() ([]byte, error) {
 	w := packet.NewPacketWriter(0)
 	defer w.Release()
 
-	w.WriteUint32(uint32(s.Header.ID))
-	w.WriteUint8(uint8(s.Header.Status))
-	w.WriteUint32(s.Header.Sequence)
+	smpp.WriteHeaderNoLength(s.Header, w)
 	w.WriteCString(s.MessageID)
 
 	return w.BytesWithLength()

@@ -27,8 +27,7 @@ func (p *PduConnect) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(p.Header.CommandID))
-	buf.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, buf)
 	buf.WriteFixedLenString(p.SourceAddr, 6)
 	buf.WriteFixedLenString(p.AuthenticatorSource, 16)
 	buf.WriteUint8(p.Version)
@@ -77,7 +76,7 @@ func (pr *PduConnectResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteBytes(pr.Header.Bytes())
+	cmpp.WriteHeaderNoLength(pr.Header, buf)
 	buf.WriteUint8(pr.Status)
 	buf.WriteFixedLenString(pr.AuthenticatorISMG, 16)
 	buf.WriteUint8(pr.Version)

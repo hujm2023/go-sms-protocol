@@ -24,8 +24,8 @@ func (t *Terminate) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(t.Header.CommandID))
-	b.WriteUint32(t.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(t.Header, b)
+
 	return b.BytesWithLength()
 }
 
@@ -52,8 +52,8 @@ func (t *TerminateResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(t.Header.CommandID))
-	b.WriteUint32(t.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(t.Header, b)
+
 	return b.BytesWithLength()
 }
 

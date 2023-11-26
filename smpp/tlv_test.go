@@ -1,12 +1,13 @@
-package smpp34
+package smpp
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
 type TLVTestSuite struct {
@@ -45,7 +46,7 @@ func (s *TLVTestSuite) TestReadTLVs() {
 	tlv := t[s.tag]
 	assert.Equal(s.T(), s.tag, tlv.Tag)
 	assert.Equal(s.T(), s.length, tlv.Length)
-	assert.True(s.T(), bytes.Equal(tlv.value, s.value))
+	assert.True(s.T(), bytes.Equal(tlv.Value, s.value))
 }
 
 func TestTLV(t *testing.T) {

@@ -13,8 +13,7 @@ func (p *PduActiveTest) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteUint32(uint32(p.Header.CommandID))
-	buf.WriteUint32(p.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(p.Header, buf)
 
 	return buf.BytesWithLength()
 }
@@ -49,7 +48,7 @@ func (pr *PduActiveTestResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
-	buf.WriteBytes(pr.Header.Bytes())
+	cmpp.WriteHeaderNoLength(pr.Header, buf)
 	buf.WriteUint8(pr.Reserved)
 
 	return buf.BytesWithLength()

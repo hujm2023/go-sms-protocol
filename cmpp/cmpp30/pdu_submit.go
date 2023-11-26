@@ -126,8 +126,7 @@ func (s *Submit) IDecode(data []byte) error {
 func (s *Submit) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 
-	b.WriteUint32(uint32(s.Header.CommandID))
-	b.WriteUint32(s.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(s.Header, b)
 	b.WriteUint64(s.MsgID)
 	b.WriteUint8(s.PkTotal)
 	b.WriteUint8(s.PkNumber)
@@ -206,8 +205,7 @@ func (s *SubmitResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(s.Header.CommandID))
-	b.WriteUint32(s.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(s.Header, b)
 	b.WriteUint64(s.MsgID)
 	b.WriteUint32(s.Result)
 

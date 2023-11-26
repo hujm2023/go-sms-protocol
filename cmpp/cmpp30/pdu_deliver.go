@@ -85,8 +85,7 @@ func (d *Deliver) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(d.Header.CommandID))
-	b.WriteUint32(d.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(d.Header, b)
 	b.WriteUint64(d.MsgID)
 	b.WriteFixedLenString(d.DestID, 21)
 	b.WriteFixedLenString(d.ServiceID, 10)
@@ -137,8 +136,7 @@ func (d *DeliverResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
-	b.WriteUint32(uint32(d.Header.CommandID))
-	b.WriteUint32(d.Header.SequenceID)
+	cmpp.WriteHeaderNoLength(d.Header, b)
 	b.WriteUint64(d.MsgID)
 	b.WriteUint32(d.Result)
 

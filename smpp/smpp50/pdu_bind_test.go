@@ -1,13 +1,12 @@
-package smpp34
+package smpp50
 
 import (
 	"bytes"
 	"testing"
 
+	"github.com/hujm2023/go-sms-protocol/smpp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
 type BindTestSuite struct {

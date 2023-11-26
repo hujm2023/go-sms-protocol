@@ -1,4 +1,4 @@
-package smpp34
+package smpp
 
 import (
 	"errors"
