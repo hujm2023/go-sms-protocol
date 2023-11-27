@@ -114,7 +114,7 @@ func (b *BatchDataCodingEncoder) Build(ctx context.Context) (contents [][]byte, 
 	}
 	_ = eg.Wait()
 
-	// 过滤掉不能编码的
+	// Filter out those that cannot be encoded.
 	encoders = lo.Filter(encoders, func(encoder *encoder, _ int) bool {
 		if !encoder.canEncode {
 			return false
@@ -122,9 +122,9 @@ func (b *BatchDataCodingEncoder) Build(ctx context.Context) (contents [][]byte, 
 		return true
 	})
 
-	// 都不能编码
+	// If none can be encoded and UCS2 is not included in the provided encodings,
+	// attempt to use UCS2 as a fallback.
 	if len(encoders) == 0 {
-		// 传入的配置中没有ucs2，则使用ucs2兜底
 		if !hasUcs2 {
 			logger.CtxInfo(ctx, "[EncodeSMPPContentAndSplitBatch] all dataCoding failed. use ucs2 as default")
 			var defaultEncoder *encoder
@@ -144,7 +144,7 @@ func (b *BatchDataCodingEncoder) Build(ctx context.Context) (contents [][]byte, 
 		return nil, datacoding.UnknownProtocolDataCoding, fmt.Errorf("all dataCoding failed")
 	}
 
-	// 取切割条数最短的那个(按照长度->编码优先级排序)
+	// Take the one with the shortest segmentation (sorted by length -> encoding priority).
 	encoderOrderBy(byLength, byDataCoding).Sort(encoders)
 
 	return encoders[0].Result()

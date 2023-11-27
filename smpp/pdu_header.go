@@ -1,6 +1,7 @@
 package smpp
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/hujm2023/go-sms-protocol/packet"
@@ -32,6 +33,19 @@ func ReadHeader(r *packet.Reader) Header {
 	h.Status = CMDStatus(r.ReadUint32())
 	h.Sequence = r.ReadUint32()
 	return h
+}
+
+func PeekHeader(buf []byte) (h Header, err error) {
+	if len(buf) < 16 {
+		return Header{}, ErrInvalidPudLength
+	}
+
+	h.Length = binary.BigEndian.Uint32(buf[:4])
+	h.ID = CMDId(binary.BigEndian.Uint32(buf[4:8]))
+	h.Status = CMDStatus(binary.BigEndian.Uint32(buf[8:12]))
+	h.Sequence = binary.BigEndian.Uint32(buf[12:16])
+
+	return h, nil
 }
 
 func WriteHeader(h Header, w *packet.Writer) {

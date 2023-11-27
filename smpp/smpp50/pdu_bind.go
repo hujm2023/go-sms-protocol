@@ -24,6 +24,10 @@ type Bind struct {
 }
 
 func (b *Bind) IDecode(data []byte) error {
+	if len(data) < smpp.MinSMPPPacketLen {
+		return smpp.ErrInvalidPudLength
+	}
+
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
@@ -69,6 +73,10 @@ type BindResp struct {
 }
 
 func (b *BindResp) IDecode(data []byte) error {
+	if len(data) < smpp.MinSMPPPacketLen {
+		return smpp.ErrInvalidPudLength
+	}
+
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 

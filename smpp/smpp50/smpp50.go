@@ -1,11 +1,11 @@
-package smpp34
+package smpp50
 
 import (
 	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
-func DecodeSMPP34(data []byte) (protocol.PDU, error) {
+func DecodeSMPP50(data []byte) (protocol.PDU, error) {
 	header, err := smpp.PeekHeader(data)
 	if err != nil {
 		return nil, err

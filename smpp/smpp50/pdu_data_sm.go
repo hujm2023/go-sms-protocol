@@ -26,6 +26,10 @@ type DataSM struct {
 }
 
 func (d *DataSM) IDecode(data []byte) error {
+	if len(data) < smpp.MinSMPPPacketLen {
+		return smpp.ErrInvalidPudLength
+	}
+
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
