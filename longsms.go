@@ -9,15 +9,16 @@ import (
 )
 
 const (
-	minLongSmsHeaderLength  = 6   // 长短信额头部长度
-	maxLongSmsContentLength = 140 // 非GSM7编码的短信最大长度
+	minLongSmsHeaderLength = 6 // Additional header length for long SMS
 
-	longMsgHeader6ByteFrameKey   = byte(0x05) // 长短信6位格式协议头 05 00 03 XX MM NN
+	// Protocol header format of 6 for long SMS: 05 00 03 XX MM NN
+	longMsgHeader6ByteFrameKey   = byte(0x05)
 	longMsgHeader6ByteFrameTotal = byte(0x00)
 	longMsgHeader6ByteFrameNum   = byte(0x03)
 	default6FrameKey             = 107
 
-	longMsgHeader7ByteFrameKey   = byte(0x06) // 长短信7位格式协议头 06 08 04 XX XX MM NN
+	// Protocol header format of 7 for long SMS: 06 08 04 XX XX MM NN
+	longMsgHeader7ByteFrameKey   = byte(0x06)
 	longMsgHeader7ByteFrameTotal = byte(0x08)
 	longMsgHeader7ByteFrameNum   = byte(0x04)
 )
@@ -48,7 +49,7 @@ func ParseLongSmsContent(content string) (frameKey, total, index int, newContent
 		index = int(content[6] & 0xff)
 		newContent = content[7:]
 	default:
-		// 其他格式不支持，或者不是长短信标准格式
+		// Not a supported UDHI
 		valid = false
 	}
 	return
@@ -113,12 +114,11 @@ func EncodeSMPPContentAndSplit(ctx context.Context, content string, msgFmt datac
 		// Fast path: If the content includes non-GSM7 encoding,
 		// there's no need to attempt again. Use UCS2 directly.
 		if datacoding.CanEncodeByGSM7(content) {
-			// gsm7特殊处理
+			// gsm7
 			contents, actualMsgFmt, err = encodeAndSplitGSM7Packed(content, frameKey)
 			if err == nil {
 				return contents, actualMsgFmt, nil
 			}
-			// log.V1.CtxNotice(ctx, "[EncodeSMPPContentAndSplit] content encode with gsm7 error: %v. use ucs2")
 		}
 		actualMsgFmt = datacoding.SMPP_CODING_UCS2
 	}
@@ -150,7 +150,7 @@ func DecodeSMPPCContent(ctx context.Context, source string, dataCoding int) (new
 	var dataBytes []byte
 	switch dataCoding {
 	case datacoding.SMPP_CODING_GSM7_UNPACKED.ToInt(), datacoding.SMPP_CODING_GSM7_PACKED.ToInt():
-		// 先用unpacked去 decode，失败后再次尝试使用packed
+		// Attempt decoding using 'unpacked' first; if unsuccessful, attempt using 'packed' again.
 		dataBytes, err = datacoding.GSM7Unpacked(source).Decode()
 		if err != nil {
 			// log.V1.CtxInfo(ctx, "GSM7 unpacked decode error: %v, use packed", err)
@@ -182,7 +182,7 @@ func encodeAndSplitGSM7Packed(content string, frameKey byte) ([][]byte, datacodi
 		return nil, 0, fmt.Errorf("encode error: %w", err)
 	}
 
-	// 短短信，直接 pack 后返回
+	// short message
 	if len(contentBytes) <= datacoding.MaxGSM7Length {
 		return [][]byte{gsm7encoding.Pack(contentBytes)}, dataCoding, nil
 	}
@@ -200,13 +200,14 @@ func encodeAndSplitGSM7Packed(content string, frameKey byte) ([][]byte, datacodi
 			continue
 		}
 
-		// 边界case：非最后一个 part 的最后一个字节，刚好是拓展字符的标志，若在此处切割，会将这两个字节分开。
-		// 为避免这种 case，让前一个 part 少打包一个字节，将0x1b放到下一个字节中
+		// Boundary case: When the last byte of a non-final part happens to be the indicator for an extended character,
+		// cutting at this point would split these two bytes.
+		// To avoid this scenario, the preceding part should pack one byte less, ensuring that 0x1b is placed within the next byte.
 		if idx != msgCount-1 && contentBytes[end-1] == gsm7encoding.EscapeSequence {
 			end--
 		}
 
-		// 拼接长短信头 + packed 之后 的内容
+		// append UDHI
 		contentByte := make([]byte, 0, (end-begin)+datacoding.UDHILength)
 		contentByte = append(contentByte, longMsgHeader6ByteFrameKey)
 		contentByte = append(contentByte, longMsgHeader6ByteFrameTotal)
@@ -231,12 +232,12 @@ func encodeAndSplitGSM7Packed(content string, frameKey byte) ([][]byte, datacodi
 // splitWithUDHI splits the long message according to perMsgLength and adds a 6-byte header for concatenated SMS.
 func splitWithUDHI(data []byte, perMsgLength int, frameKey byte) [][]byte {
 	total := len(data)
-	msgCount := ceil(total, perMsgLength) // 向上取整
+	msgCount := ceil(total, perMsgLength)
 	contentBytes := make([][]byte, 0, msgCount)
 	for idx := 0; idx < msgCount; idx++ {
-		contentByte := make([]byte, 0, perMsgLength+datacoding.UDHILength) // 一次性申请足够多空间的内存，避免 append 时发生 copy
+		contentByte := make([]byte, 0, perMsgLength+datacoding.UDHILength)
 
-		// 长短信头
+		// append UDHI
 		contentByte = append(contentByte, longMsgHeader6ByteFrameKey)
 		contentByte = append(contentByte, longMsgHeader6ByteFrameTotal)
 		contentByte = append(contentByte, longMsgHeader6ByteFrameNum)
@@ -244,7 +245,7 @@ func splitWithUDHI(data []byte, perMsgLength int, frameKey byte) [][]byte {
 		contentByte = append(contentByte, byte(msgCount)) // total
 		contentByte = append(contentByte, byte(idx+1))    // num
 
-		// 按照 perMsgLength 切割
+		// split by perMsgLength
 		begin := idx * perMsgLength
 		end := (idx + 1) * perMsgLength
 		if end > total {

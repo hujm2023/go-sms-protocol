@@ -48,9 +48,10 @@ func (e *EnquireLinkResp) IDecode(data []byte) error {
 
 func (e *EnquireLinkResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter(0)
-	buf.WriteUint32(uint32(e.Header.ID))
-	buf.WriteUint32(uint32(e.Header.Status))
-	buf.WriteUint32(e.Header.Sequence)
+	defer buf.Release()
+
+	smpp.WriteHeaderNoLength(e.Header, buf)
+
 	return buf.BytesWithLength()
 }
 

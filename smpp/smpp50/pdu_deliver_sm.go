@@ -36,6 +36,10 @@ type DeliverSm struct {
 }
 
 func (d *DeliverSm) IDecode(data []byte) error {
+	if len(data) < smpp.MinSMPPPacketLen {
+		return smpp.ErrInvalidPudLength
+	}
+
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
@@ -95,7 +99,7 @@ func (d *DeliverSm) SetSequenceID(id uint32) {
 	d.Header.Sequence = id
 }
 
-type DeliverSMResp struct {
+type DeliverSmResp struct {
 	smpp.Header
 
 	// CString, max 65
@@ -104,7 +108,11 @@ type DeliverSMResp struct {
 	tlvs smpp.TLVs
 }
 
-func (d *DeliverSMResp) IDecode(data []byte) error {
+func (d *DeliverSmResp) IDecode(data []byte) error {
+	if len(data) < smpp.MinSMPPPacketLen {
+		return smpp.ErrInvalidPudLength
+	}
+
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
@@ -115,7 +123,7 @@ func (d *DeliverSMResp) IDecode(data []byte) error {
 	return buf.Error()
 }
 
-func (d *DeliverSMResp) IEncode() ([]byte, error) {
+func (d *DeliverSmResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
@@ -126,6 +134,6 @@ func (d *DeliverSMResp) IEncode() ([]byte, error) {
 	return buf.BytesWithLength()
 }
 
-func (d *DeliverSMResp) SetSequenceID(id uint32) {
+func (d *DeliverSmResp) SetSequenceID(id uint32) {
 	d.Header.Sequence = id
 }

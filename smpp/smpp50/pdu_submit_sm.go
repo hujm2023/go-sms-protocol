@@ -103,7 +103,7 @@ func (s *SubmitSm) SetSequenceID(id uint32) {
 	s.Header.Sequence = id
 }
 
-type SubmitSMResp struct {
+type SubmitSmResp struct {
 	smpp.Header
 
 	// CString, max 65
@@ -112,7 +112,7 @@ type SubmitSMResp struct {
 	tlv smpp.TLVs
 }
 
-func (s *SubmitSMResp) IDecode(data []byte) error {
+func (s *SubmitSmResp) IDecode(data []byte) error {
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
@@ -123,7 +123,7 @@ func (s *SubmitSMResp) IDecode(data []byte) error {
 	return buf.Error()
 }
 
-func (s *SubmitSMResp) IEncode() ([]byte, error) {
+func (s *SubmitSmResp) IEncode() ([]byte, error) {
 	buf := packet.NewPacketWriter()
 	defer buf.Release()
 
@@ -136,6 +136,6 @@ func (s *SubmitSMResp) IEncode() ([]byte, error) {
 	return buf.BytesWithLength()
 }
 
-func (s *SubmitSMResp) SetSequenceID(id uint32) {
+func (s *SubmitSmResp) SetSequenceID(id uint32) {
 	s.Header.Sequence = id
 }

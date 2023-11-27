@@ -10,6 +10,10 @@ type EnquireLink struct {
 }
 
 func (e *EnquireLink) IDecode(data []byte) error {
+	if len(data) < smpp.MinSMPPPacketLen {
+		return smpp.ErrInvalidPudLength
+	}
+
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
@@ -36,6 +40,10 @@ type EnquireLinkResp struct {
 }
 
 func (e *EnquireLinkResp) IDecode(data []byte) error {
+	if len(data) < smpp.MinSMPPPacketLen {
+		return smpp.ErrInvalidPudLength
+	}
+
 	buf := packet.NewPacketReader(data)
 	defer buf.Release()
 
