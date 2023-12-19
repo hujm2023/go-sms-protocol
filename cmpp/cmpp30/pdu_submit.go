@@ -120,7 +120,7 @@ func (s *Submit) IDecode(data []byte) error {
 	s.MsgContent = string(b.ReadNBytes(int(s.MsgLength)))
 	s.LinkID = b.ReadCStringN(20)
 
-	return nil
+	return b.Error()
 }
 
 func (s *Submit) IEncode() ([]byte, error) {
