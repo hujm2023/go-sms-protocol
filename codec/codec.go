@@ -37,10 +37,4 @@ type ConnReader interface {
 
 	// Size returns the number of bytes that can be read from current Connection.
 	Size() int
-
-	// LocalAddress ...
-	LocalAddress() string
-
-	// RemoteAddress ...
-	RemoteAddress() string
 }
