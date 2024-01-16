@@ -18,10 +18,6 @@ type Header struct {
 	Sequence uint32
 }
 
-func (h Header) String() string {
-	return fmt.Sprintf("Length:%d, Id:%s, Status:%d, Sequence:%d", h.Length, h.ID, h.Status, h.Sequence)
-}
-
 func NewPduHeader(l uint32, id CMDId, status CMDStatus, seq uint32) *Header {
 	return &Header{l, id, status, seq}
 }
