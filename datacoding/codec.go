@@ -29,6 +29,7 @@ const (
 	DataCodingGSM7UnPacked DataCoding = "GSM 7-bit (Unpacked)"
 	DataCodingLatin1       DataCoding = "LATIN1"
 	DataCodingUcs2         DataCoding = "UCS2"
+	DataCodingUcs2NoSign   DataCoding = "UCS2 No Sign"
 )
 
 func (d DataCoding) String() string {
