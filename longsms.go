@@ -92,6 +92,8 @@ func DecodeCMPPCContent(_ context.Context, source string, dataCoding uint8) (new
 		dataBytes, err = datacoding.Ascii(source).Decode()
 	case datacoding.CMPP_CODING_GBK.ToUint8():
 		dataBytes, err = datacoding.GB18030(source).Decode()
+	case datacoding.CMPP_CODING_UCS2_NO_SIGN.ToUint8():
+		fallthrough
 	case datacoding.CMPP_CODING_UCS2.ToUint8():
 		dataBytes, err = datacoding.UCS2(source).Decode()
 	default:
