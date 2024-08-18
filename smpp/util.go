@@ -21,6 +21,20 @@ func IsLongMO(esmClass int) bool {
 	return esmClass>>6 == 0x01
 }
 
+// GenerateSourceAddress2 解析source_addr 对应的 ton 和 npi
+// - 纯数字(包括手机号 或 10DLC)，长码(长度>=10) 用 1/1，短码(长度<10) 用 3/0；
+// - 带有字母，用 5/0
+// 备注：调研过每家下游供应商对长码的判断都不一样，缺乏参考性。所以我们查询汇总了Byteplus的历史发送，取得 10 这个可信值
+func GenerateSourceAddress2(addr string) (ton, npi int, sourceAddress string) {
+	if isDigit(addr) {
+		if utf8.RuneCountInString(addr) >= 10 {
+			return TON_International, NPI_ISDN, addr // 纯数字，长码，1/1
+		}
+		return TON_NetworkSpecific, NPI_Unknown, addr // 纯数字，短码，3/0
+	}
+	return TON_Alphanumeric, NPI_Unknown, addr // 带字母，5/0
+}
+
 // GenerateSourceAddress parses the ton (Type of Number) and npi (Numbering Plan Indicator)
 // corresponding to the source_addr:
 //   - Pure numbers (including mobile numbers or 10DLC) and long codes (length >= 10) use 1/1,
@@ -39,7 +53,54 @@ func GenerateSourceAddress(addr string) (ton, npi int, sourceAddress string) {
 	return TON_Alphanumeric, NPI_Unknown, addr // Contains letters, 5 to 0.
 }
 
-// isLetterOrDigit checks if it consists of alphanumeric characters.
+func getTon(address string) (ton int) {
+	if isDigit(address) {
+		if len(address) >= 10 {
+			return TON_International // "E.164 格式" 1
+		}
+		return TON_Abbreviated // "简短的" 6
+	} else {
+		return TON_Alphanumeric // "其他格式，数字字母组合" 5
+	}
+}
+
+// GenerateSourceAddress1 解析 source_address 对应的 ton 和 npi.
+// 另一种实现方式
+func GenerateSourceAddress1(addr string) (ton, npi int, sourceAddress string) {
+	if isLetterOrDigit(addr) {
+		l := len(addr)
+		if isDigit(addr) /*纯数字*/ {
+			// 长度大于 0，一般是"+"开头的手机号
+			if l >= 10 {
+				return TON_International, NPI_ISDN, addr // ton=1,npi=1
+			}
+			// 其他 case
+			return TON_Abbreviated, NPI_Unknown, addr // ton=6,npi=0
+		} else {
+			// // short_code
+			// if l >= 4 && l <= 6 {
+			// 	return TON_NetworkSpecific, NPI_Unknown // ton=3,npi=0
+			// }
+			return TON_Alphanumeric, NPI_Unknown, addr // ton=5,npi=0
+		}
+	} else {
+		return TON_Unknown, NPI_ISDN, addr // ton=0,npi=1
+	}
+}
+
+// GenerateDestAddress1 解析 dest_address 对应的 ton 和 npi
+// 另一种实现方式
+func GenerateDestAddress1(addr string) (ton, npi int, destAddress string) {
+	return TON_International, NPI_ISDN, addr
+}
+
+// GenerateDestAddress 解析 dest_address 对应的 ton 和 npi.
+// 旧协转逻辑.需要传入得到 addr(目标手机号) 是不带"+"的格式
+func GenerateDestAddress(addr string) (ton, npi int, destAddress string) {
+	return getTon(addr), 0x01, addr
+}
+
+// isLetterOrDigit 是否由数字字母组成.
 func isLetterOrDigit(s string) bool {
 	if len(s) == 0 {
 		return false
@@ -53,19 +114,7 @@ func isLetterOrDigit(s string) bool {
 	return true
 }
 
-func isLetter(s string) bool {
-	if len(s) == 0 {
-		return false
-	}
-
-	for _, i := range s {
-		if !unicode.IsLetter(i) {
-			return false
-		}
-	}
-	return true
-}
-
+// isDigit 是否纯数字.
 func isDigit(s string) bool {
 	if len(s) == 0 {
 		return false
@@ -79,7 +128,7 @@ func isDigit(s string) bool {
 	return true
 }
 
-// ToValidatePeriod converts a relative time description to the time format specified by the SMPP protocol.
+// ToValidatePeriod 将相对时间描述转为 SMPP 规定的时间格式。
 func ToValidatePeriod(now time.Time, v string, isRelative bool) (string, error) {
 	d, err := time.ParseDuration(v)
 	if err != nil {
@@ -92,7 +141,7 @@ func ToValidatePeriod(now time.Time, v string, isRelative bool) (string, error) 
 	}
 
 	if isRelative {
-		return timeToSMPPTimeFormatRelativce(d), nil
+		return timeToSMPPTimeFormatRelative(d), nil
 	}
 	return timeToSMPPTimeFormatAbsolute(now, now.Add(d)), nil
 }
@@ -124,8 +173,8 @@ const (
 	smppRelativeTimeFormat = "0000%02d%02d%02d%02d000R" // 不支持年、月级别的超时时间
 )
 
-// timeToSMPPTimeFormatRelativce 将时间t转为SMPP规定的时间格式——相对时间
-func timeToSMPPTimeFormatRelativce(diff time.Duration) string {
+// timeToSMPPTimeFormatRelative 将时间t转为SMPP规定的时间格式——相对时间
+func timeToSMPPTimeFormatRelative(diff time.Duration) string {
 	days := int(diff.Hours()/24) % 31
 	hours := int(diff.Hours()) % 24
 	minutes := int(diff.Minutes()) % 60
@@ -138,7 +187,7 @@ func timeToSMPPTimeFormatRelativce(diff time.Duration) string {
 }
 
 // timeToSMPPTimeFormatAbsolute 将时间t转为SMPP规定的时间格式——绝对时间
-func timeToSMPPTimeFormatAbsolute(now, target time.Time) string {
-	_, target = now.UTC(), target.UTC() // 最终都用 utc+0 表示
+func timeToSMPPTimeFormatAbsolute(_, target time.Time) string {
+	target = target.UTC() // 最终都用 utc+0 表示
 	return target.Format(smppAbsoluteTimeFormat) + "0" + "00" + "+"
 }

@@ -1,8 +1,6 @@
 package smpp34
 
 import (
-	"fmt"
-	"io"
 	"strings"
 )
 
@@ -66,16 +64,5 @@ func findSubValue(s string, sub string, maxSize int) (value string) {
 		value = value[:maxSize]
 	}
 
-	return
-}
-
-// ExtractDeliveryReceipt1 将short_message字符串提取为 DeliveryReceipt 结构体.
-// Deprecated. 性能不如 ExtractDeliveryReceipt,且不能处理key顺序异常、缺少 key 的场景
-func ExtractDeliveryReceipt1(s string) (d DeliveryReceipt, err error) {
-	_, err = fmt.Sscanf(s, "id:%s sub:%s dlvrd:%s submit date:%s done date:%s stat:%s err:%s text:%s",
-		&d.ID, &d.Sub, &d.Dlvrd, &d.SubDate, &d.DoneDate, &d.Stat, &d.Err, &d.Text)
-	if err != nil && err == io.EOF {
-		return d, nil
-	}
 	return
 }

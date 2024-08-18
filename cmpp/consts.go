@@ -1,12 +1,11 @@
 package cmpp
 
 import (
-	"errors"
 	"fmt"
 )
 
 const (
-	MinCMPPPduLength = HeaderLength
+	MinCMPPPduLength = HeaderLength // cmpp PduCMPP 最小的长度
 )
 
 type Version uint8
@@ -53,7 +52,44 @@ func (c CommandID) String() string {
 	case CommandTerminateResp:
 		return "CMPP_TERMINATE_RESP"
 	}
-	return fmt.Sprintf("known(%d)", uint32(c))
+	return fmt.Sprintf("unknown(%d)", uint32(c))
+}
+
+func (c CommandID) ToUint32() uint32 {
+	return uint32(c)
+}
+
+func (c CommandID) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`"%s"`, c.String())), nil
+}
+
+func (c *CommandID) UnmarshalJSON(b []byte) error {
+	fmt.Println(string(b))
+	switch string(b) {
+	case `"CMPP_CONNECT"`:
+		*c = CommandConnect
+	case `"CMPP_CONNECT_RESP"`:
+		*c = CommandConnectResp
+	case `"CMPP_ACTIVE_TEST"`:
+		*c = CommandActiveTest
+	case `"CMPP_ACTIVE_TEST_RESP"`:
+		*c = CommandActiveTestResp
+	case `"CMPP_SUBMIT"`:
+		*c = CommandSubmit
+	case `"CMPP_SUBMIT_RESP"`:
+		*c = CommandSubmitResp
+	case `"CMPP_DELIVERY"`:
+		*c = CommandDeliver
+	case `"CMPP_DELIVERY_RESP"`:
+		*c = CommandDeliverResp
+	case `"CMPP_TERMINATE"`:
+		*c = CommandTerminate
+	case `"CMPP_TERMINATE_RESP"`:
+		*c = CommandTerminateResp
+	default:
+		return fmt.Errorf("invalid command id: %s", string(b))
+	}
+	return nil
 }
 
 const (
@@ -95,15 +131,3 @@ const (
 	CommandPushMtRouteUpdateResp           // MT 路由更新应答
 	CommandPushMoRouteUpdateResp           // MO 路由更新应答
 )
-
-const (
-	DELIVERED     = "DELIVRD" // 成功送达
-	UNDELIVERABLE = "UNDELIV" // 无法送达
-	EXPIRED       = "EXPIRED"
-	DELETED       = "DELETED"
-	ACCEPTED      = "ACCEPTD"
-	UNKNOWN       = "UNKNOWN"
-	REJECTED      = "REJECTD"
-)
-
-var ErrInvalidPudLength = errors.New("invalid pdu length")

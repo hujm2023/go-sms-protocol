@@ -139,6 +139,7 @@ func TestPacketReader(t *testing.T) {
 
 func TestPacketWriter_WriteNumeric(t *testing.T) {
 	w := NewPacketWriter(0)
+	defer w.Release()
 	w.WriteUint8(uint8(123))
 	assert.Equal(t, 1, w.Len())
 

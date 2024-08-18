@@ -3,10 +3,13 @@ package cmpp20
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"testing"
 
-	"github.com/hujm2023/go-sms-protocol/cmpp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
 func TestPduSubmit(t *testing.T) {
@@ -52,10 +55,35 @@ func TestPduSubmit(t *testing.T) {
 	encoded, err := s.IEncode()
 	assert.Nil(t, err)
 	assert.True(t, bytes.Equal(b, encoded))
+
+	t.Log(s.String())
 }
 
 func TestA(t *testing.T) {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 1195725856)
 	t.Log(b)
+}
+
+func TestHeaderString(t *testing.T) {
+	h := cmpp.Header{
+		TotalLength: 39,
+		CommandID:   cmpp.CommandActiveTestResp,
+		SequenceID:  123,
+	}
+
+	submit := PduSubmit{
+		Header:             h,
+		PkTotal:            1,
+		PkNumber:           1,
+		RegisteredDelivery: 1,
+		MsgLevel:           1,
+		ServiceID:          "test",
+		FeeType:            "02",
+	}
+
+	ss, _ := json.Marshal(submit)
+	var sss PduSubmit
+	lo.Must0(json.Unmarshal(ss, &sss))
+	t.Log(sss)
 }

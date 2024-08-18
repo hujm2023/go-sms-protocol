@@ -7,16 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	protocol "github.com/hujm2023/go-sms-protocol"
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
 // NewConnect ...
-func NewConnect(account, passwd string, seqID uint32, nowFunc func() (string, uint32)) *PduConnect {
-	if nowFunc == nil {
-		nowFunc = now
-	}
-	t, ts := nowFunc()
+func NewConnect(account, passwd string, seqID uint32) *PduConnect {
+	t, ts := now()
 	md5Bytes := md5.Sum(
 		bytes.Join([][]byte{
 			[]byte(account),
@@ -50,19 +47,18 @@ func NewActiveTestPacket(seqID uint32) []byte {
 }
 
 func now() (string, uint32) {
-	s := Now().Format("0102150405")
+	s := time.Now().Format("0102150405")
 	i, _ := strconv.Atoi(s)
 	return s, uint32(i)
 }
 
-// DecodeCMPP20 ...
-func DecodeCMPP20(data []byte) (protocol.PDU, error) {
+func DecodeCMPP20(data []byte) (sms.PDU, error) {
 	header, err := cmpp.PeekHeader(data)
 	if err != nil {
 		return nil, err
 	}
 
-	var pdu protocol.PDU
+	var pdu sms.PDU
 	switch header.CommandID {
 	case cmpp.CommandConnect:
 		pdu = new(PduConnect)
@@ -87,15 +83,11 @@ func DecodeCMPP20(data []byte) (protocol.PDU, error) {
 	}
 
 	if pdu == nil {
-		return nil, protocol.ErrUnsupportedPacket
+		return nil, sms.ErrUnsupportedPacket
 	}
 
 	if err = pdu.IDecode(data); err != nil {
 		return nil, err
 	}
 	return pdu, nil
-}
-
-func Now() time.Time {
-	return time.Now()
 }

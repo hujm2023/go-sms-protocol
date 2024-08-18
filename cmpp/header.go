@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/hujm2023/go-sms-protocol/packet"
@@ -14,9 +15,12 @@ const (
 	PacketTotalLengthBytes = 4
 )
 
-var ErrIllegalHeaderLength = errors.New("cmpp2 header length is invalid")
+var (
+	ErrIllegalHeaderLength = errors.New("cmpp2 header length is invalid")
+	ErrInvalidPudLength    = errors.New("invalid pdu length")
+)
 
-// Header for CMPP.
+// Header CMPP PduCMPP 的公共 header
 type Header struct {
 	// 4 字节，消息总长度
 	TotalLength uint32
@@ -35,6 +39,10 @@ func (h Header) Bytes() []byte {
 	_ = binary.Write(buf, binary.BigEndian, h.CommandID)
 	_ = binary.Write(buf, binary.BigEndian, h.SequenceID)
 	return buf.Bytes()
+}
+
+func (h Header) String() string {
+	return fmt.Sprintf("{TotalLength:%d, CommandID:%s, SequenceID:%d}", h.TotalLength, h.CommandID.String(), h.SequenceID)
 }
 
 func NewHeader(totalLength uint32, commandID CommandID, sequenceID uint32) Header {

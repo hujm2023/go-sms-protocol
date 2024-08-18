@@ -1,6 +1,7 @@
 package cmpp30
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -52,6 +53,36 @@ func (q *Query) IEncode() ([]byte, error) {
 
 func (q *Query) SetSequenceID(id uint32) {
 	q.Header.SequenceID = id
+}
+
+func (q *Query) GetSequenceID() uint32 {
+	return q.Header.SequenceID
+}
+
+func (q *Query) GetCommand() sms.ICommander {
+	return cmpp.CommandQuery
+}
+
+func (q *Query) GenEmptyResponse() sms.PDU {
+	return &QueryResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandQueryResp,
+			SequenceID: q.GetSequenceID(),
+		},
+	}
+}
+
+func (q *Query) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", q.Header)
+	w.Write("Time", q.Time)
+	w.Write("QueryType", q.QueryType)
+	w.Write("QueryCode", q.QueryCode)
+	w.Write("Reserve", q.Reserve)
+
+	return w.String()
 }
 
 type QueryResp struct {
@@ -136,4 +167,36 @@ func (q *QueryResp) IEncode() ([]byte, error) {
 
 func (q *QueryResp) SetSequenceID(id uint32) {
 	q.Header.SequenceID = id
+}
+
+func (q *QueryResp) GetSequenceID() uint32 {
+	return q.Header.SequenceID
+}
+
+func (q *QueryResp) GetCommand() sms.ICommander {
+	return cmpp.CommandQueryResp
+}
+
+func (q *QueryResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (q *QueryResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", q.Header)
+	w.Write("Time", q.Time)
+	w.Write("QueryType", q.QueryType)
+	w.Write("QueryCode", q.QueryCode)
+	w.Write("MtTLMsg", q.MtTLMsg)
+	w.Write("MtTlUsr", q.MtTlUsr)
+	w.Write("MtScs", q.MtScs)
+	w.Write("MtWT", q.MtWT)
+	w.Write("MtFL", q.MtFL)
+	w.Write("MoScs", q.MoScs)
+	w.Write("MoWT", q.MoWT)
+	w.Write("MoFL", q.MoFL)
+
+	return w.String()
 }

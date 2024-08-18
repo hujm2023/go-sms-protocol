@@ -32,6 +32,17 @@ func (s *DeliverSmTestSuite) SetupTest() {
 }
 
 func (s *DeliverSmTestSuite) TestDeliverSM_IDecode() {
+	d := &DeliverSm{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	assert.Equal(s.T(), d.Header.ID, smpp.DELIVER_SM)
+	assert.Equal(s.T(), d.Header.Sequence, uint32(25188))
+	assert.Equal(s.T(), s.sourceAddr, d.SourceAddr)
+	assert.Equal(s.T(), s.destAddr, d.DestinationAddr)
+	assert.Equal(s.T(), s.shortMessageString, string(d.ShortMessage))
+
+	tlv, ok := d.TLVs[smpp.RECEIPTED_MESSAGE_ID]
+	assert.True(s.T(), ok)
+	assert.Equal(s.T(), s.msgID, string(tlv.Value()))
 }
 
 func (s *DeliverSmTestSuite) TestDeliverSM_IEncode() {
@@ -58,8 +69,8 @@ func (s *DeliverSmTestSuite) TestDeliverSM_IEncode() {
 		SmDefaultMsgId:       1,
 		SmLength:             uint8(len([]byte(s.shortMessageString))),
 		ShortMessage:         []byte(s.shortMessageString),
-		tlvs: map[uint16]smpp.TLV{
-			smpp.RECEIPTED_MESSAGE_ID: smpp.NewTLVS(smpp.RECEIPTED_MESSAGE_ID, s.msgID),
+		TLVs: map[uint16]smpp.TLV{
+			smpp.RECEIPTED_MESSAGE_ID: smpp.NewTLVByString(smpp.RECEIPTED_MESSAGE_ID, s.msgID),
 		},
 	}
 	data, err := d.IEncode()
@@ -70,17 +81,114 @@ func (s *DeliverSmTestSuite) TestDeliverSM_IEncode() {
 func (s *DeliverSmTestSuite) TestDeliverSM_SetSequenceID() {
 	d := &DeliverSm{}
 	assert.Nil(s.T(), d.IDecode(s.valueBytes))
-	assert.Equal(s.T(), d.Header.ID, smpp.DELIVER_SM)
-	assert.Equal(s.T(), d.Header.Sequence, uint32(25188))
-	assert.Equal(s.T(), s.sourceAddr, d.SourceAddr)
-	assert.Equal(s.T(), s.destAddr, d.DestinationAddr)
-	assert.Equal(s.T(), s.shortMessageString, string(d.ShortMessage))
+	assert.Equal(s.T(), d.GetSequenceID(), uint32(25188))
+	d.SetSequenceID(12345)
+	assert.Equal(s.T(), d.GetSequenceID(), uint32(12345))
+}
 
-	tlv, ok := d.tlvs[smpp.RECEIPTED_MESSAGE_ID]
-	assert.True(s.T(), ok)
-	assert.Equal(s.T(), s.msgID, string(tlv.Value))
+func (s *DeliverSmTestSuite) TestDeliverSM_String() {
+	d := &DeliverSm{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	s.T().Log(d.String())
+	s.T().Log(len([]byte(d.String())))
+}
+
+func (s *DeliverSmTestSuite) TestDeliverSM_GetCommand() {
+	d := &DeliverSm{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	assert.Equal(s.T(), d.GetCommand(), smpp.DELIVER_SM)
+}
+
+func (s *DeliverSmTestSuite) TestDeliverSM_GenEmptyResponse() {
+	d := &DeliverSm{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	resp := d.GenEmptyResponse()
+	assert.Equal(s.T(), resp.GetCommand(), smpp.DELIVER_SM_RESP)
+	assert.Equal(s.T(), resp.GetSequenceID(), d.GetSequenceID())
+}
+
+func (s *DeliverSmTestSuite) TestDeliverSM_GetSequenceID() {
+	d := &DeliverSm{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	assert.Equal(s.T(), d.GetSequenceID(), uint32(25188))
 }
 
 func TestDeliverSmTestSuite(t *testing.T) {
 	suite.Run(t, new(DeliverSmTestSuite))
+}
+
+type DeliverSmRespTestSuite struct {
+	suite.Suite
+
+	MessageID string
+
+	valueBytes []byte
+}
+
+func (s *DeliverSmRespTestSuite) SetupTest() {
+	s.MessageID = ""
+	s.valueBytes = []byte{0, 0, 0, 17, 128, 0, 0, 5, 0, 0, 0, 0, 82, 34, 114, 128, 0}
+}
+
+func (s *DeliverSmRespTestSuite) TestDeliverSMResp_IEncode() {
+	d := DeliverSmResp{
+		Header: smpp.Header{
+			ID:       smpp.DELIVER_SM_RESP,
+			Sequence: 1377989248,
+			Status:   smpp.ESME_ROK,
+			Length:   17,
+		},
+		MessageID: "",
+	}
+	data, err := d.IEncode()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), bytes.Equal(data, s.valueBytes))
+}
+
+func (s *DeliverSmRespTestSuite) TestDeliverSMResp_IDecode() {
+	d := new(DeliverSmResp)
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	assert.Equal(s.T(), d.Header.ID, smpp.DELIVER_SM_RESP)
+	assert.Equal(s.T(), d.Header.Sequence, uint32(1377989248))
+	assert.Equal(s.T(), d.Header.Status, smpp.ESME_ROK)
+	assert.Equal(s.T(), d.MessageID, s.MessageID)
+}
+
+func (s *DeliverSmRespTestSuite) TestDeliverSMResp_SetSequenceID() {
+	d := &DeliverSmResp{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	assert.Equal(s.T(), d.GetSequenceID(), uint32(1377989248))
+	d.SetSequenceID(12345)
+	assert.Equal(s.T(), d.GetSequenceID(), uint32(12345))
+}
+
+func (s *DeliverSmRespTestSuite) TestDeliverSMResp_GetSequenceID() {
+	d := &DeliverSmResp{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+
+	assert.Equal(s.T(), d.GetSequenceID(), uint32(1377989248))
+}
+
+func (s *DeliverSmRespTestSuite) TestDeliverSMResp_String() {
+	d := &DeliverSmResp{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	s.T().Log(d.String())
+	s.T().Log(len([]byte(d.String())))
+}
+
+func (s *DeliverSmRespTestSuite) TestDeliverSMResp_GetCommand() {
+	d := &DeliverSmResp{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	assert.Equal(s.T(), d.GetCommand(), smpp.DELIVER_SM_RESP)
+}
+
+func (s *DeliverSmRespTestSuite) TestDeliverSMResp_GenEmptyResponse() {
+	d := &DeliverSmResp{}
+	assert.Nil(s.T(), d.IDecode(s.valueBytes))
+	resp := d.GenEmptyResponse()
+	assert.Nil(s.T(), resp)
+}
+
+func TestDeliveyRespSuite(t *testing.T) {
+	suite.Run(t, new(DeliverSmRespTestSuite))
 }

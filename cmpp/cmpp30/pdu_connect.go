@@ -1,6 +1,7 @@
 package cmpp30
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -54,6 +55,35 @@ func (p *Connect) SetSequenceID(id uint32) {
 	p.Header.SequenceID = id
 }
 
+func (c *Connect) GetSequenceID() uint32 {
+	return c.Header.SequenceID
+}
+
+func (c *Connect) GetCommand() sms.ICommander {
+	return cmpp.CommandConnect
+}
+
+func (c *Connect) GenEmptyResponse() sms.PDU {
+	return &ConnectResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandConnectResp,
+			SequenceID: c.GetSequenceID(),
+		},
+	}
+}
+
+func (c *Connect) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", c.Header)
+	w.Write("SourceAddr", c.SourceAddr)
+	w.WriteWithBytes("AuthenticatorSource", c.AuthenticatorSource)
+	w.Write("Version", c.Version)
+
+	return w.String()
+}
+
 type ConnectResp struct {
 	cmpp.Header
 
@@ -95,4 +125,28 @@ func (c *ConnectResp) IEncode() ([]byte, error) {
 
 func (c *ConnectResp) SetSequenceID(id uint32) {
 	c.Header.SequenceID = id
+}
+
+func (c *ConnectResp) GetSequenceID() uint32 {
+	return c.Header.SequenceID
+}
+
+func (c *ConnectResp) GetCommand() sms.ICommander {
+	return cmpp.CommandConnectResp
+}
+
+func (c *ConnectResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (c *ConnectResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", c.Header)
+	w.Write("Status", c.Status)
+	w.WriteWithBytes("AuthenticatorISMG", c.AuthenticatorISMG)
+	w.Write("Version", c.Version)
+
+	return w.String()
 }

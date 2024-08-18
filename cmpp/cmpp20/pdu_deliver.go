@@ -1,6 +1,7 @@
 package cmpp20
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -54,11 +55,12 @@ type PduDeliver struct {
 }
 
 func (p *PduDeliver) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter()
+	totalLen := HeaderLength + 8 + 21 + 10 + 1 + 1 + 1 + 21 + 1 + 1 + int(p.MsgLength) + 8
+	p.TotalLength = uint32(totalLen)
+	b := packet.NewPacketWriter(totalLen)
 	defer b.Release()
 
-	cmpp.WriteHeaderNoLength(p.Header, b)
-
+	b.WriteBytes(p.Header.Bytes())
 	b.WriteUint64(p.MsgID)
 	b.WriteFixedLenString(p.DestID, 21)
 	b.WriteFixedLenString(p.ServiceID, 10)
@@ -71,12 +73,12 @@ func (p *PduDeliver) IEncode() ([]byte, error) {
 	b.WriteString(p.MsgContent)
 	b.WriteFixedLenString(p.Reserved, 8)
 
-	return b.BytesWithLength()
+	return b.Bytes()
 }
 
 func (p *PduDeliver) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return cmpp.ErrInvalidPudLength
+		return ErrInvalidPudLength
 	}
 
 	b := packet.NewPacketReader(data)
@@ -92,14 +94,51 @@ func (p *PduDeliver) IDecode(data []byte) error {
 	p.SrcTerminalID = b.ReadCStringN(21)
 	p.RegisteredDeliver = b.ReadUint8()
 	p.MsgLength = b.ReadUint8()
-	p.MsgContent = b.ReadCStringN(int(p.MsgLength))
+	p.MsgContent = string(b.ReadNBytes(int(p.MsgLength)))
 	p.Reserved = b.ReadCStringN(8)
 
 	return b.Error()
 }
 
+func (p *PduDeliver) GetSequenceID() uint32 {
+	return p.Header.SequenceID
+}
+
 func (p *PduDeliver) SetSequenceID(sid uint32) {
 	p.Header.SequenceID = sid
+}
+
+func (p *PduDeliver) GetCommand() sms.ICommander {
+	return cmpp.CommandDeliver
+}
+
+func (p *PduDeliver) GenEmptyResponse() sms.PDU {
+	return &PduDeliverResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandDeliverResp,
+			SequenceID: p.GetSequenceID(),
+		},
+	}
+}
+
+func (p *PduDeliver) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", p.Header)
+	w.Write("MsgID", p.MsgID)
+	w.Write("DestID", p.DestID)
+	w.Write("ServiceID", p.ServiceID)
+	w.Write("TpPID", p.TpPID)
+	w.Write("TpUDHI", p.TpUDHI)
+	w.Write("MsgFmt", p.MsgFmt)
+	w.Write("SrcTerminalID", p.SrcTerminalID)
+	w.Write("RegisteredDeliver", p.RegisteredDeliver)
+	w.Write("MsgLength", p.MsgLength)
+	w.WriteWithBytes("MsgContent", p.MsgContent)
+	w.Write("Reserved", p.Reserved)
+
+	return w.String()
 }
 
 // --------------------------------------
@@ -118,19 +157,20 @@ type PduDeliverResp struct {
 }
 
 func (pr *PduDeliverResp) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter()
+	pr.TotalLength = MaxDeliverRespLength
+	b := packet.NewPacketWriter(MaxDeliverRespLength)
 	defer b.Release()
 
-	cmpp.WriteHeaderNoLength(pr.Header, b)
+	b.WriteBytes(pr.Header.Bytes())
 	b.WriteUint64(pr.MsgID)
 	b.WriteUint8(pr.Result)
 
-	return b.BytesWithLength()
+	return b.Bytes()
 }
 
 func (pr *PduDeliverResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return cmpp.ErrInvalidPudLength
+		return ErrInvalidPudLength
 	}
 
 	b := packet.NewPacketReader(data)
@@ -143,63 +183,29 @@ func (pr *PduDeliverResp) IDecode(data []byte) error {
 	return b.Error()
 }
 
+func (pr *PduDeliverResp) GetSequenceID() uint32 {
+	return pr.Header.SequenceID
+}
+
 func (pr *PduDeliverResp) SetSequenceID(sid uint32) {
 	pr.Header.SequenceID = sid
 }
 
-type SubPduDeliveryContent struct {
-	// 8 字节，信息标识SP提交短信（CMPP_SUBMIT）操作时，与SP相连的ISMG产生的Msg_Id。
-	MsgID uint64
-
-	// 7 字节. 发送短信的应答结果，含义与SMPP协议要求中stat字段定义相同
-	// DELIVRD: Message is delivered to destination
-	// EXPIRED: Message validity period has expired
-	// DELETED: Message has been deleted.
-	// ACCEPTD: Message  is  in  accepted  state(i.e.  has been  manually  readon  behalf  of  the subscriber by customer service)
-	// UNKNOWN: Message is in invalid state
-	// REJECTD: Message is in a rejected state
-	Stat string
-
-	// 10 字节，提交到下游网关时间，YYMMDDHHMM（YY为年的后两位00-99，MM：01-12，DD：01-31，HH：00-23，MM：00-59）
-	SubmitTime string
-
-	// 10 字节，收到下游网关状态报告时间，YYMMDDHHMM（YY为年的后两位00-99，MM：01-12，DD：01-31，HH：00-23，MM：00-59）
-	DoneTime string
-
-	// 21 字节，目 的 终 端 MSISDN号 码 (SP发 送 CMPP_SUBMIT消息的目标终端)
-	DestTerminalID string
-
-	// 4 字节，取自SMSC发送状态报告的消息体中的消息标识。
-	SMSCSequence uint32
+func (p *PduDeliverResp) GetCommand() sms.ICommander {
+	return cmpp.CommandDeliverResp
 }
 
-func (s *SubPduDeliveryContent) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter()
-	defer b.Release()
-
-	b.WriteUint64(s.MsgID)
-	b.WriteFixedLenString(s.Stat, 7)
-	b.WriteFixedLenString(s.SubmitTime, 10)
-	b.WriteFixedLenString(s.DoneTime, 10)
-	b.WriteFixedLenString(s.DestTerminalID, 21)
-	b.WriteUint32(s.SMSCSequence)
-
-	return b.Bytes()
+func (p *PduDeliverResp) GenEmptyResponse() sms.PDU {
+	return nil
 }
 
-func (s *SubPduDeliveryContent) IDecode(data []byte) (err error) {
-	r := packet.NewPacketReader(data)
-	defer r.Release()
+func (p *PduDeliverResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
 
-	s.MsgID = r.ReadUint64()
-	s.Stat = r.ReadCStringN(7)
-	s.SubmitTime = r.ReadCStringN(10)
-	s.DoneTime = r.ReadCStringN(10)
-	s.DestTerminalID = r.ReadCStringN(21)
-	s.SMSCSequence = r.ReadUint32()
+	w.Write("Header", p.Header)
+	w.Write("MsgID", p.MsgID)
+	w.Write("Result", p.Result)
 
-	return r.Error()
-}
-
-func (s *SubPduDeliveryContent) SetSequenceID(_ uint32) {
+	return w.String()
 }

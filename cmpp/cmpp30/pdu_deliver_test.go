@@ -79,6 +79,37 @@ func (s *DeliverTestSuite) TestDeliver_IDecode() {
 	s.Equal(s.msgContent, deliver.MsgContent)
 }
 
+func (s *DeliverTestSuite) TestDeliver_SetSequenceID() {
+	d := new(Deliver)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	d.SetSequenceID(0x02)
+	s.Equal(uint32(0x02), d.Header.SequenceID)
+}
+
+func (s *DeliverTestSuite) TestDeliver_GetSequenceID() {
+	d := new(Deliver)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	s.Equal(uint32(0x01), d.GetSequenceID())
+}
+
+func (s *DeliverTestSuite) TestDeliver_GetCommand() {
+	d := new(Deliver)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	s.Equal(cmpp.CommandDeliver, d.GetCommand())
+}
+
+func (s *DeliverTestSuite) TestDeliver_GenEmptyResponse() {
+	d := new(Deliver)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	resp := d.GenEmptyResponse()
+	s.Equal(cmpp.CommandDeliverResp, resp.GetCommand())
+	s.Equal(uint32(0x01), resp.GetSequenceID())
+}
+
 func TestDeliver(t *testing.T) {
 	suite.Run(t, new(DeliverTestSuite))
 }
@@ -118,6 +149,36 @@ func (s *DeliverRespTestSuite) TestDeliverResp_IDecode() {
 	s.Equal(uint32(0x01), d.Header.SequenceID)
 	s.Equal(s.msgID, d.MsgID)
 	s.Equal(uint32(0), d.Result)
+}
+
+func (s *DeliverRespTestSuite) TestDeliverResp_SetSequenceID() {
+	d := new(DeliverResp)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	d.SetSequenceID(0x02)
+	s.Equal(uint32(0x02), d.Header.SequenceID)
+}
+
+func (s *DeliverRespTestSuite) TestDeliverResp_GetSequenceID() {
+	d := new(DeliverResp)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	s.Equal(uint32(0x01), d.GetSequenceID())
+}
+
+func (s *DeliverRespTestSuite) TestDeliverResp_GetCommand() {
+	d := new(DeliverResp)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	s.Equal(cmpp.CommandDeliverResp, d.GetCommand())
+}
+
+func (s *DeliverRespTestSuite) TestDeliverResp_GenEmptyResponse() {
+	d := new(DeliverResp)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	resp := d.GenEmptyResponse()
+	s.Nil(resp)
 }
 
 func TestDeliverResp(t *testing.T) {

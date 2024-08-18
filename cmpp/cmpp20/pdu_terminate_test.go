@@ -3,8 +3,9 @@ package cmpp20
 import (
 	"testing"
 
-	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
 func TestPduTerminate(t *testing.T) {

@@ -1,6 +1,7 @@
 package cmpp30
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -161,6 +162,56 @@ func (s *Submit) SetSequenceID(id uint32) {
 	s.Header.SequenceID = id
 }
 
+func (s *Submit) GetSequenceID() uint32 {
+	return s.Header.SequenceID
+}
+
+func (s *Submit) GetCommand() sms.ICommander {
+	return cmpp.CommandSubmit
+}
+
+func (s *Submit) GenEmptyResponse() sms.PDU {
+	return &SubmitResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandSubmitResp,
+			SequenceID: s.GetSequenceID(),
+		},
+	}
+}
+
+func (s *Submit) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", s.Header)
+	w.Write("MsgID", s.MsgID)
+	w.Write("PkTotal", s.PkTotal)
+	w.Write("PkNumber", s.PkNumber)
+	w.Write("RegisteredDelivery", s.RegisteredDelivery)
+	w.Write("MsgLevel", s.MsgLevel)
+	w.Write("ServiceID", s.ServiceID)
+	w.Write("FeeUserType", s.FeeUserType)
+	w.Write("FeeTerminalID", s.FeeTerminalID)
+	w.Write("FeeTerminalType", s.FeeTerminalType)
+	w.Write("TpPID", s.TpPID)
+	w.Write("TpUDHI", s.TpUDHI)
+	w.Write("MsgFmt", s.MsgFmt)
+	w.Write("MsgSrc", s.MsgSrc)
+	w.Write("FeeType", s.FeeType)
+	w.Write("FeeCode", s.FeeCode)
+	w.Write("ValiDTime", s.ValiDTime)
+	w.Write("AtTime", s.AtTime)
+	w.Write("SrcID", s.SrcID)
+	w.Write("DestUsrTL", s.DestUsrTL)
+	w.Write("DestTerminalID", s.DestTerminalID)
+	w.Write("DestTerminalType", s.DestTerminalType)
+	w.Write("MsgLength", s.MsgLength)
+	w.WriteWithBytes("MsgContent", s.MsgContent)
+	w.Write("LinkID", s.LinkID)
+
+	return w.String()
+}
+
 type SubmitResp struct {
 	Header cmpp.Header
 
@@ -214,4 +265,27 @@ func (s *SubmitResp) IEncode() ([]byte, error) {
 
 func (s *SubmitResp) SetSequenceID(id uint32) {
 	s.Header.SequenceID = id
+}
+
+func (s *SubmitResp) GetSequenceID() uint32 {
+	return s.Header.SequenceID
+}
+
+func (s *SubmitResp) GetCommand() sms.ICommander {
+	return cmpp.CommandSubmitResp
+}
+
+func (s *SubmitResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (s *SubmitResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", s.Header)
+	w.Write("MsgID", s.MsgID)
+	w.Write("Result", s.Result)
+
+	return w.String()
 }

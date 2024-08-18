@@ -1,6 +1,7 @@
 package cmpp20
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -22,16 +23,17 @@ type PduQuery struct {
 }
 
 func (p *PduQuery) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter()
+	p.TotalLength = MaxQueryLength
+	b := packet.NewPacketWriter(MaxQueryLength)
 	defer b.Release()
 
-	cmpp.WriteHeaderNoLength(p.Header, b)
+	b.WriteBytes(p.Header.Bytes())
 	b.WriteFixedLenString(p.Time, 8)
 	b.WriteUint8(p.QueryType)
 	b.WriteFixedLenString(p.QueryCode, 10)
 	b.WriteFixedLenString(p.Reserve, 8)
 
-	return b.BytesWithLength()
+	return b.Bytes()
 }
 
 func (p *PduQuery) IDecode(data []byte) error {
@@ -47,8 +49,38 @@ func (p *PduQuery) IDecode(data []byte) error {
 	return b.Error()
 }
 
+func (p *PduQuery) GetSequenceID() uint32 {
+	return p.Header.SequenceID
+}
+
 func (p *PduQuery) SetSequenceID(sid uint32) {
 	p.Header.SequenceID = sid
+}
+
+func (p *PduQuery) GetCommand() sms.ICommander {
+	return cmpp.CommandQuery
+}
+
+func (p *PduQuery) GenEmptyResponse() sms.PDU {
+	return &PduQueryResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandQueryResp,
+			SequenceID: p.GetSequenceID(),
+		},
+	}
+}
+
+func (p *PduQuery) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", p.Header)
+	w.Write("Time", p.Time)
+	w.Write("QueryType", p.QueryType)
+	w.Write("QueryCode", p.QueryCode)
+	w.Write("Reserve", p.Reserve)
+
+	return w.String()
 }
 
 // -----------------------
@@ -91,10 +123,11 @@ type PduQueryResp struct {
 }
 
 func (p *PduQueryResp) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter()
+	p.TotalLength = MaxQueryRespLength
+	b := packet.NewPacketWriter(MaxQueryRespLength)
 	defer b.Release()
 
-	cmpp.WriteHeaderNoLength(p.Header, b)
+	b.WriteBytes(p.Header.Bytes())
 	b.WriteFixedLenString(p.Time, 8)
 	b.WriteUint8(p.QueryType)
 	b.WriteFixedLenString(p.QueryCode, 10)
@@ -107,7 +140,7 @@ func (p *PduQueryResp) IEncode() ([]byte, error) {
 	b.WriteUint32(p.MtWT)
 	b.WriteUint32(p.MtFL)
 
-	return b.BytesWithLength()
+	return b.Bytes()
 }
 
 func (p *PduQueryResp) IDecode(data []byte) error {
@@ -123,13 +156,45 @@ func (p *PduQueryResp) IDecode(data []byte) error {
 	p.MtScs = b.ReadUint32()
 	p.MtWT = b.ReadUint32()
 	p.MtFL = b.ReadUint32()
-	p.MoScs = b.ReadUint32()
-	p.MoWT = b.ReadUint32()
-	p.MoFL = b.ReadUint32()
+	p.MtScs = b.ReadUint32()
+	p.MtWT = b.ReadUint32()
+	p.MtFL = b.ReadUint32()
 
 	return b.Error()
 }
 
+func (p *PduQueryResp) GetSequenceID() uint32 {
+	return p.Header.SequenceID
+}
+
 func (p *PduQueryResp) SetSequenceID(sid uint32) {
 	p.Header.SequenceID = sid
+}
+
+func (p *PduQueryResp) GetCommand() sms.ICommander {
+	return cmpp.CommandQueryResp
+}
+
+func (p *PduQueryResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (p *PduQueryResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", p.Header)
+	w.Write("Time", p.Time)
+	w.Write("QueryType", p.QueryType)
+	w.Write("QueryCode", p.QueryCode)
+	w.Write("MtTLMsg", p.MtTLMsg)
+	w.Write("MtTlUsr", p.MtTlUsr)
+	w.Write("MtScs", p.MtScs)
+	w.Write("MtWT", p.MtWT)
+	w.Write("MtFL", p.MtFL)
+	w.Write("MoScs", p.MoScs)
+	w.Write("MoWT", p.MoWT)
+	w.Write("MoFL", p.MoFL)
+
+	return w.String()
 }

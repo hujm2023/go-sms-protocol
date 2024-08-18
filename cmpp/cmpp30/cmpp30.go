@@ -1,18 +1,18 @@
 package cmpp30
 
 import (
-	protocol "github.com/hujm2023/go-sms-protocol"
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
 // DecodeCMPP30 ...
-func DecodeCMPP30(data []byte) (protocol.PDU, error) {
+func DecodeCMPP30(data []byte) (sms.PDU, error) {
 	header, err := cmpp.PeekHeader(data)
 	if err != nil {
 		return nil, err
 	}
 
-	var pdu protocol.PDU
+	var pdu sms.PDU
 	switch header.CommandID {
 	case cmpp.CommandActiveTest:
 		pdu = new(ActiveTest)
@@ -45,7 +45,7 @@ func DecodeCMPP30(data []byte) (protocol.PDU, error) {
 	}
 
 	if pdu == nil {
-		return nil, protocol.ErrUnsupportedPacket
+		return nil, sms.ErrUnsupportedPacket
 	}
 
 	if err = pdu.IDecode(data); err != nil {
