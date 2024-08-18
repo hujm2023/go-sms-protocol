@@ -1,6 +1,7 @@
 package cmpp30
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -106,6 +107,46 @@ func (d *Deliver) SetSequenceID(id uint32) {
 	d.Header.SequenceID = id
 }
 
+func (d *Deliver) GetSequenceID() uint32 {
+	return d.Header.SequenceID
+}
+
+func (d *Deliver) GetCommand() sms.ICommander {
+	return cmpp.CommandDeliver
+}
+
+func (d *Deliver) GenEmptyResponse() sms.PDU {
+	return &DeliverResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandDeliverResp,
+			SequenceID: d.GetSequenceID(),
+		},
+	}
+}
+
+func (d *Deliver) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", d.Header)
+	w.Write("MsgID", d.MsgID)
+	w.Write("DestID", d.DestID)
+	w.Write("ServiceID", d.ServiceID)
+	w.Write("TpPID", d.TpPID)
+	w.Write("TpUDHI", d.TpUDHI)
+	w.Write("MsgFmt", d.MsgFmt)
+	w.Write("SrcTerminalID", d.SrcTerminalID)
+	w.Write("SrcTerminalType", d.SrcTerminalType)
+	w.Write("RegisteredDeliver", d.RegisteredDeliver)
+	w.Write("MsgLength", d.MsgLength)
+	w.Write("MsgContent", d.MsgContent)
+	w.Write("LinkID", d.LinkID)
+
+	return w.String()
+}
+
+// -----------------------------------------------------------------------------------------------------
+
 type DeliverResp struct {
 	Header cmpp.Header
 	// 8 字节，信息标识（CMPP_DELIVER 中的 Msg_Id 字段）
@@ -145,4 +186,27 @@ func (d *DeliverResp) IEncode() ([]byte, error) {
 
 func (d *DeliverResp) SetSequenceID(id uint32) {
 	d.Header.SequenceID = id
+}
+
+func (d *DeliverResp) GetSequenceID() uint32 {
+	return d.Header.SequenceID
+}
+
+func (d *DeliverResp) GetCommand() sms.ICommander {
+	return cmpp.CommandDeliverResp
+}
+
+func (d *DeliverResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (d *DeliverResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", d.Header)
+	w.Write("MsgID", d.MsgID)
+	w.Write("Result", d.Result)
+
+	return w.String()
 }

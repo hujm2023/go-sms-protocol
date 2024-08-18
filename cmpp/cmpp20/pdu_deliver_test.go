@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
 func TestPduDelivery(t *testing.T) {
@@ -36,6 +37,8 @@ func TestPduDelivery(t *testing.T) {
 	encoded, err := d.IEncode()
 	assert.Nil(t, err)
 	assert.True(t, bytes.Equal(dataExpected, encoded))
+
+	t.Log(d.String())
 }
 
 func TestDelivery(t *testing.T) {
@@ -43,4 +46,5 @@ func TestDelivery(t *testing.T) {
 	d := new(PduDeliver)
 	t.Log(d.IDecode(b))
 	t.Log([]byte(d.MsgContent))
+	t.Log(d.String())
 }

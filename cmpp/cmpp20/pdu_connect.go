@@ -1,8 +1,7 @@
 package cmpp20
 
 import (
-	"fmt"
-
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -24,21 +23,22 @@ type PduConnect struct {
 }
 
 func (p *PduConnect) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter()
+	p.TotalLength = MaxConnectLength
+	buf := packet.NewPacketWriter(MaxConnectLength)
 	defer buf.Release()
 
-	cmpp.WriteHeaderNoLength(p.Header, buf)
+	buf.WriteBytes(p.Header.Bytes())
 	buf.WriteFixedLenString(p.SourceAddr, 6)
 	buf.WriteFixedLenString(p.AuthenticatorSource, 16)
 	buf.WriteUint8(p.Version)
 	buf.WriteUint32(p.Timestamp)
 
-	return buf.BytesWithLength()
+	return buf.Bytes()
 }
 
 func (p *PduConnect) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return cmpp.ErrInvalidPudLength
+		return ErrInvalidPudLength
 	}
 
 	buf := packet.NewPacketReader(data)
@@ -53,8 +53,38 @@ func (p *PduConnect) IDecode(data []byte) error {
 	return buf.Error()
 }
 
+func (p *PduConnect) GetSequenceID() uint32 {
+	return p.Header.SequenceID
+}
+
 func (p *PduConnect) SetSequenceID(sid uint32) {
 	p.Header.SequenceID = sid
+}
+
+func (p *PduConnect) GetCommand() sms.ICommander {
+	return cmpp.CommandConnect
+}
+
+func (p *PduConnect) GenEmptyResponse() sms.PDU {
+	return &PduConnectResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandConnectResp,
+			SequenceID: p.GetSequenceID(),
+		},
+	}
+}
+
+func (p *PduConnect) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", p.Header)
+	w.Write("SourceAddr", p.SourceAddr)
+	w.WriteWithBytes("AuthenticatorSource", p.AuthenticatorSource)
+	w.Write("Version", p.Version)
+	w.Write("Timestamp", p.Timestamp)
+
+	return w.String()
 }
 
 // --------------------------------------------------------------------
@@ -73,20 +103,21 @@ type PduConnectResp struct {
 }
 
 func (pr *PduConnectResp) IEncode() ([]byte, error) {
-	buf := packet.NewPacketWriter()
+	pr.TotalLength = MaxConnectRespLength
+	buf := packet.NewPacketWriter(MaxConnectRespLength)
 	defer buf.Release()
 
-	cmpp.WriteHeaderNoLength(pr.Header, buf)
+	buf.WriteBytes(pr.Header.Bytes())
 	buf.WriteUint8(pr.Status)
 	buf.WriteFixedLenString(pr.AuthenticatorISMG, 16)
 	buf.WriteUint8(pr.Version)
 
-	return buf.BytesWithLength()
+	return buf.Bytes()
 }
 
 func (pr *PduConnectResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return cmpp.ErrInvalidPudLength
+		return ErrInvalidPudLength
 	}
 
 	buf := packet.NewPacketReader(data)
@@ -98,23 +129,30 @@ func (pr *PduConnectResp) IDecode(data []byte) error {
 	return buf.Error()
 }
 
+func (pr *PduConnectResp) GetSequenceID() uint32 {
+	return pr.Header.SequenceID
+}
+
 func (pr *PduConnectResp) SetSequenceID(sid uint32) {
 	pr.Header.SequenceID = sid
 }
 
-// 1 字节，状态：0正确 1消息结构错 2非法源地址 3认证错 4版本太高 >5其他错误
-var connectRespStatus = map[uint8]string{
-	0: "正确",
-	1: "消息结构错",
-	2: "非法源地址",
-	3: "认证错",
-	4: "版本太高",
-	5: "其他错误",
+func (p *PduConnectResp) GetCommand() sms.ICommander {
+	return cmpp.CommandConnectResp
 }
 
-func ConnectRespResultString(r uint8) string {
-	if s, ok := connectRespStatus[r]; ok {
-		return s
-	}
-	return fmt.Sprintf("未知错误代码 %d", r)
+func (p *PduConnectResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (p *PduConnectResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", p.Header)
+	w.Write("Status", p.Status)
+	w.WriteWithBytes("AuthenticatorISMG", p.AuthenticatorISMG)
+	w.Write("Version", p.Version)
+
+	return w.String()
 }

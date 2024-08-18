@@ -1,6 +1,7 @@
 package cmpp20
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -83,11 +84,16 @@ func (p *PduSubmit) IEncode() ([]byte, error) {
 	if p.PkTotal == 0 && p.PkNumber == 0 {
 		p.PkTotal, p.PkNumber = 1, 1
 	}
+	p.TotalLength = HeaderLength + // header
+		116 + // DestUsrTL 之前的字段长度
+		1 + uint32(21*p.DestUsrTL) + // DestUsrTL 和 DestTerminalID
+		1 + uint32(p.MsgLength) + // MsgLength 和 MsgContent
+		8 // reversed
 
-	b := packet.NewPacketWriter()
+	b := packet.NewPacketWriter(int(p.TotalLength))
 	defer b.Release()
 
-	cmpp.WriteHeaderNoLength(p.Header, b)
+	b.WriteBytes(p.Header.Bytes())
 	b.WriteUint64(p.MsgID)
 	b.WriteUint8(p.PkTotal)
 	b.WriteUint8(p.PkNumber)
@@ -113,12 +119,12 @@ func (p *PduSubmit) IEncode() ([]byte, error) {
 	b.WriteString(p.MsgContent)
 	b.WriteFixedLenString(p.Reserve, 8)
 
-	return b.BytesWithLength()
+	return b.Bytes()
 }
 
 func (p *PduSubmit) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
-		return cmpp.ErrInvalidPudLength
+		return ErrInvalidPudLength
 	}
 	b := packet.NewPacketReader(data)
 	defer b.Release()
@@ -147,14 +153,66 @@ func (p *PduSubmit) IDecode(data []byte) error {
 		p.DestTerminalID[i] = b.ReadCStringN(21)
 	}
 	p.MsgLength = b.ReadUint8()
-	p.MsgContent = string(b.ReadNBytes(int(p.MsgLength)))
+	p.MsgContent = b.ReadCStringN(int(p.MsgLength))
 	p.Reserve = b.ReadCStringN(8)
 
 	return b.Error()
 }
 
+func (p *PduSubmit) GetSequenceID() uint32 {
+	return p.Header.SequenceID
+}
+
 func (p *PduSubmit) SetSequenceID(id uint32) {
 	p.Header.SequenceID = id
+}
+
+func (p *PduSubmit) MaxLength() uint32 {
+	return MaxSubmitLength
+}
+
+func (p *PduSubmit) GetCommand() sms.ICommander {
+	return cmpp.CommandSubmit
+}
+
+func (p *PduSubmit) GenEmptyResponse() sms.PDU {
+	return &PduSubmitResp{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandSubmitResp,
+			SequenceID: p.GetSequenceID(),
+		},
+	}
+}
+
+func (p *PduSubmit) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", p.Header)
+	w.Write("MsgID", p.MsgID)
+	w.Write("PkTotal", p.PkTotal)
+	w.Write("PkNumber", p.PkNumber)
+	w.Write("RegisteredDelivery", p.RegisteredDelivery)
+	w.Write("MsgLevel", p.MsgLevel)
+	w.Write("ServiceID", p.ServiceID)
+	w.Write("FeeUserType", p.FeeUserType)
+	w.Write("FeeTerminalID", p.FeeTerminalID)
+	w.Write("TpPID", p.TpPID)
+	w.Write("TpUDHI", p.TpUDHI)
+	w.Write("MsgFmt", p.MsgFmt)
+	w.Write("MsgSrc", p.MsgSrc)
+	w.Write("FeeType", p.FeeType)
+	w.Write("FeeCode", p.FeeCode)
+	w.Write("ValIDTime", p.ValIDTime)
+	w.Write("AtTime", p.AtTime)
+	w.Write("SrcID", p.SrcID)
+	w.Write("DestUsrTL", p.DestUsrTL)
+	w.Write("DestTerminalID", p.DestTerminalID)
+	w.Write("MsgLength", p.MsgLength)
+	w.WriteWithBytes("MsgContent", p.MsgContent)
+	w.Write("Reserve", p.Reserve)
+
+	return w.String()
 }
 
 // --------------
@@ -185,14 +243,15 @@ type PduSubmitResp struct {
 }
 
 func (pr *PduSubmitResp) IEncode() ([]byte, error) {
-	b := packet.NewPacketWriter()
+	pr.TotalLength = MaxSubmitRespLength
+	b := packet.NewPacketWriter(MaxSubmitRespLength)
 	defer b.Release()
 
-	cmpp.WriteHeaderNoLength(pr.Header, b)
+	b.WriteBytes(pr.Header.Bytes())
 	b.WriteUint64(pr.MsgID)
 	b.WriteUint8(pr.Result)
 
-	return b.BytesWithLength()
+	return b.Bytes()
 }
 
 func (pr *PduSubmitResp) IDecode(data []byte) error {
@@ -206,8 +265,31 @@ func (pr *PduSubmitResp) IDecode(data []byte) error {
 	return b.Error()
 }
 
+func (pr *PduSubmitResp) GetSequenceID() uint32 {
+	return pr.Header.SequenceID
+}
+
 func (pr *PduSubmitResp) SetSequenceID(id uint32) {
 	pr.Header.SequenceID = id
+}
+
+func (p *PduSubmitResp) GetCommand() sms.ICommander {
+	return cmpp.CommandSubmitResp
+}
+
+func (p *PduSubmitResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (p *PduSubmitResp) String() string {
+	w := packet.NewPDUStringer()
+	defer w.Release()
+
+	w.Write("Header", p.Header)
+	w.Write("MsgID", p.MsgID)
+	w.Write("Result", p.Result)
+
+	return w.String()
 }
 
 var submitResultString = map[uint8]string{

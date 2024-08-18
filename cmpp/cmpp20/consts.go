@@ -1,5 +1,7 @@
 package cmpp20
 
+import "errors"
+
 const (
 	HeaderLength = 4 + 4 + 4 // cmpp2 PDU Header的长度
 
@@ -15,4 +17,17 @@ const (
 	MaxDeliverRespLength    = HeaderLength + 8 + 1
 	MaxQueryLength          = HeaderLength + 8 + 1 + 10 + 8
 	MaxQueryRespLength      = HeaderLength + 8 + 1 + 10 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4
+)
+const (
+	DELIVERED     = "DELIVRD" // 成功送达
+	UNDELIVERABLE = "UNDELIV" // 无法送达
+	EXPIRED       = "EXPIRED"
+	DELETED       = "DELETED"
+	ACCEPTED      = "ACCEPTD"
+	UNKNOWN       = "UNKNOWN"
+	REJECTED      = "REJECTD"
+)
+
+var (
+	ErrInvalidPudLength = errors.New("invalid pdu length")
 )

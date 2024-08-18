@@ -138,6 +138,12 @@ const (
 )
 
 const (
+	// TLV Fields 只用来标识上游sender2的字段，不会用于协议相关的数据处理
+	TLV_PE_ID       = "tlv:pe_id"
+	TLV_TEMPLATE_ID = "tlv:template_id"
+)
+
+const (
 	// Optional Field Tags
 	DEST_ADDR_SUBUNIT           = 0x0005
 	DEST_NETWORK_TYPE           = 0x0006
@@ -183,6 +189,8 @@ const (
 	ALERT_ON_MESSAGE_DELIVERY   = 0x130C
 	ITS_REPLY_TYPE              = 0x1380
 	ITS_SESSION_INFO            = 0x1383
+	PE_ID                       = 0x1400
+	TEMPLATE_ID                 = 0x1401
 )
 
 const (

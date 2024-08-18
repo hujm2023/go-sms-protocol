@@ -42,6 +42,15 @@ func (s *SubmitSmTestSuite) TearDownTest() {
 }
 
 func (s *SubmitSmTestSuite) TestSubmitSM_IDecode() {
+	submit := new(SubmitSm)
+	assert.Nil(s.T(), submit.IDecode(s.valueBytes))
+
+	assert.Equal(s.T(), submit.Header.Sequence, uint32(40))
+	assert.Equal(s.T(), submit.Header.ID, smpp.SUBMIT_SM)
+	assert.Equal(s.T(), s.sourceAddr, submit.SourceAddr)
+	assert.Equal(s.T(), s.destAddr, submit.DestinationAddr)
+	assert.Equal(s.T(), s.registerDelivery, submit.RegisteredDelivery)
+	assert.Equal(s.T(), s.content, string(submit.ShortMessage))
 }
 
 func (s *SubmitSmTestSuite) TestSubmitSM_IEncode() {
@@ -86,14 +95,107 @@ func (s *SubmitSmTestSuite) TestSubmitSM_SetSequenceID() {
 	submit := new(SubmitSm)
 	assert.Nil(s.T(), submit.IDecode(s.valueBytes))
 
-	assert.Equal(s.T(), submit.Header.Sequence, uint32(40))
-	assert.Equal(s.T(), submit.Header.ID, smpp.SUBMIT_SM)
-	assert.Equal(s.T(), s.sourceAddr, submit.SourceAddr)
-	assert.Equal(s.T(), s.destAddr, submit.DestinationAddr)
-	assert.Equal(s.T(), s.registerDelivery, submit.RegisteredDelivery)
-	assert.Equal(s.T(), s.content, string(submit.ShortMessage))
+	submit.SetSequenceID(12345)
+	assert.Equal(s.T(), submit.Header.Sequence, uint32(12345))
+}
+
+func (s *SubmitSmTestSuite) TestSubmitSM_GetSequenceID() {
+	submit := new(SubmitSm)
+	assert.Nil(s.T(), submit.IDecode(s.valueBytes))
+
+	assert.Equal(s.T(), submit.GetSequenceID(), uint32(40))
+}
+
+func (s *SubmitSmTestSuite) TestSubmitSM_GetCommand() {
+	submit := new(SubmitSm)
+	assert.Nil(s.T(), submit.IDecode(s.valueBytes))
+
+	assert.Equal(s.T(), submit.GetCommand(), smpp.SUBMIT_SM)
+}
+
+func (s *SubmitSmTestSuite) TestSubmitSM_GenEmptyResponse() {
+	submit := new(SubmitSm)
+	assert.Nil(s.T(), submit.IDecode(s.valueBytes))
+
+	resp := submit.GenEmptyResponse()
+	assert.Equal(s.T(), resp.GetCommand(), smpp.SUBMIT_SM_RESP)
+	assert.Equal(s.T(), resp.GetSequenceID(), uint32(40))
 }
 
 func TestSubmitSm(t *testing.T) {
 	suite.Run(t, new(SubmitSmTestSuite))
+}
+
+type SubmitSmRespTestSuite struct {
+	suite.Suite
+
+	MessageID string
+
+	submitSmRespBytes []byte
+}
+
+func (s *SubmitSmRespTestSuite) SetupTest() {
+	s.submitSmRespBytes = []byte{
+		0, 0, 0, 53, 128, 0, 0, 4, 0, 0, 0, 0, 82, 33, 172, 56, 49, 48, 48, 57, 52, 54, 101, 52, 45, 53, 97, 56, 102, 45, 52, 56, 53, 100, 45, 56, 101, 54, 52, 45, 101, 100, 102, 57, 97, 97, 51, 55, 55, 97, 50, 50, 0,
+	}
+	s.MessageID = "100946e4-5a8f-485d-8e64-edf9aa377a22"
+}
+
+func (s *SubmitSmRespTestSuite) TestSubmitSmResp_IDecode() {
+	submitSmResp := new(SubmitSmResp)
+	assert.Nil(s.T(), submitSmResp.IDecode(s.submitSmRespBytes))
+
+	assert.Equal(s.T(), submitSmResp.Header.Sequence, uint32(1377938488))
+	assert.Equal(s.T(), submitSmResp.Header.ID, smpp.SUBMIT_SM_RESP)
+	assert.Equal(s.T(), s.MessageID, submitSmResp.MessageID)
+}
+
+func (s *SubmitSmRespTestSuite) TestSubmitSmResp_IEncode() {
+	b := SubmitSmResp{
+		Header: smpp.Header{
+			Length:   53,
+			ID:       smpp.SUBMIT_SM_RESP,
+			Status:   smpp.ESME_ROK,
+			Sequence: 1377938488,
+		},
+		MessageID: s.MessageID,
+	}
+	data, err := b.IEncode()
+	assert.Nil(s.T(), err)
+
+	assert.Equal(s.T(), s.submitSmRespBytes, data)
+}
+
+func (s *SubmitSmRespTestSuite) TestSubmitSmResp_SetSequenceID() {
+	submitSmResp := new(SubmitSmResp)
+	assert.Nil(s.T(), submitSmResp.IDecode(s.submitSmRespBytes))
+
+	submitSmResp.SetSequenceID(12345)
+	assert.Equal(s.T(), submitSmResp.Header.Sequence, uint32(12345))
+}
+
+func (s *SubmitSmRespTestSuite) TestSubmitSmResp_GetSequenceID() {
+	submitSmResp := new(SubmitSmResp)
+	assert.Nil(s.T(), submitSmResp.IDecode(s.submitSmRespBytes))
+
+	assert.Equal(s.T(), submitSmResp.GetSequenceID(), uint32(1377938488))
+}
+
+func (s *SubmitSmRespTestSuite) TestSubmitSmResp_GetCommand() {
+	submitSmResp := new(SubmitSmResp)
+	assert.Nil(s.T(), submitSmResp.IDecode(s.submitSmRespBytes))
+
+	assert.Equal(s.T(), submitSmResp.GetCommand(), smpp.SUBMIT_SM_RESP)
+}
+
+func (s *SubmitSmRespTestSuite) TestSubmitSmResp_GenEmptyResponse() {
+	submitSmResp := new(SubmitSmResp)
+	assert.Nil(s.T(), submitSmResp.IDecode(s.submitSmRespBytes))
+
+	resp := submitSmResp.GenEmptyResponse()
+	assert.Nil(s.T(), resp)
+}
+
+func TestSubmitRespSuite(t *testing.T) {
+	suite.Run(t, new(SubmitSmRespTestSuite))
 }

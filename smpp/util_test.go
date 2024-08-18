@@ -17,7 +17,7 @@ func TestToValidatePeriod1(t *testing.T) {
 	}
 
 	t.Run("test_timeToSMPPTimeFormatRelativce", func(t *testing.T) {
-		t.Log(timeToSMPPTimeFormatRelativce(time.Second * 5))
+		t.Log(timeToSMPPTimeFormatRelative(time.Second * 5))
 		tests := []struct {
 			name string
 			args time.Duration
@@ -32,7 +32,7 @@ func TestToValidatePeriod1(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				if got := timeToSMPPTimeFormatRelativce(tt.args); got != tt.want {
+				if got := timeToSMPPTimeFormatRelative(tt.args); got != tt.want {
 					t.Errorf("timeToSMPPTimeFormatRelativce() = %v, want %v", got, tt.want)
 				}
 			})

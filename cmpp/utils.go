@@ -2,14 +2,73 @@ package cmpp
 
 import (
 	"bytes"
-	"crypto/md5"
+	"errors"
 	"fmt"
-	"strconv"
+	"io"
 	"strings"
-	"time"
+	"unicode/utf16"
+	"unicode/utf8"
+
+	"github.com/valyala/bytebufferpool"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
-const ConnectTSFormat = "0102150405"
+type FuncWithError func() error
+
+var (
+	ErrInvalidUtf8Rune       = errors.New("not valid utf8 runes")
+	ErrUnsupportedDataCoding = errors.New("unsupported data coding")
+)
+
+const (
+	ASCII = uint8(0)
+	LATIN = uint8(1)
+	UCS2  = uint8(8)
+	GBK   = uint8(15)
+
+	// UCS2RemoveSign 有些通道，下游供应商会自动填充签名，此时发送时需要将 content 中的签名去掉
+	// 此编码同 UCS2，但对于运营商会自动加签名的通道，此编码可以让运营商不再自动加签名
+	UCS2RemoveSign = uint8(25)
+)
+
+func Utf8ToUcs2(in string) (string, error) {
+	if !utf8.ValidString(in) {
+		return "", ErrInvalidUtf8Rune
+	}
+
+	r := bytes.NewReader([]byte(in))
+	t := transform.NewReader(r, unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()) // UTF-16 bigEndian, no-bom
+	out, err := io.ReadAll(t)
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+func Utf8ToUcs2Back(in string) string {
+	buf := utf16.Encode([]rune(in))
+	octets := make([]byte, 0, len(buf)*2)
+	for _, n := range buf {
+		octets = append(octets, byte(n&0xFF00>>8), byte(n&0x00FF))
+	}
+	return string(octets)
+}
+
+var ucs2BytesBufferPool = bytebufferpool.Pool{}
+
+func Utf8ToUcs2Pooled(in string) (s string) {
+	buf := utf16.Encode([]rune(in))
+	octets := ucs2BytesBufferPool.Get()
+	for _, n := range buf {
+		_ = octets.WriteByte(byte(n & 0xFF00 >> 8))
+		_ = octets.WriteByte(byte(n & 0x00FF))
+	}
+	s = octets.String()
+	octets.Reset()
+	ucs2BytesBufferPool.Put(octets)
+	return s
+}
 
 // RemoveSign 移除发送内容中的签名。
 // - 成功移除时，signature不为空，返回去除签名后的content和signature；
@@ -131,48 +190,19 @@ func signaturePosition(content string, left, right string) string {
 	return content[from+len(left) : to]
 }
 
-// Now ...
-func Now() time.Time {
-	return time.Now()
+// 1 字节，状态：0正确 1消息结构错 2非法源地址 3认证错 4版本太高 >5其他错误
+var connectRespStatus = map[uint8]string{
+	0: "正确",
+	1: "消息结构错",
+	2: "非法源地址",
+	3: "认证错",
+	4: "版本太高",
+	5: "其他错误",
 }
 
-// GenConnectTimestamp ...
-func GenConnectTimestamp(nowFunc func() time.Time) (string, uint32) {
-	if nowFunc == nil {
-		nowFunc = Now
+func ConnectRespResultString(r uint8) string {
+	if s, ok := connectRespStatus[r]; ok {
+		return s
 	}
-	t, _ := strconv.Atoi(nowFunc().Format(ConnectTSFormat))
-	s := uint32(t)
-	return TimeStamp2Str(s), s
-}
-
-// TimeStamp2Str converts a timestamp(MMDDHHMMSS) int to a string(10 bytes).
-// Right aligned, fill 0 if shorter than 10.
-func TimeStamp2Str(t uint32) string {
-	return fmt.Sprintf("%010d", t)
-}
-
-// GenConnectAuth is used to generate the AuthenticatorSource field in the CMPP CONNECT PDU.
-func GenConnectAuth(account string, password string, timestampStr string) []byte {
-	md5Bytes := md5.Sum(
-		bytes.Join([][]byte{
-			[]byte(account),
-			make([]byte, 9),
-			[]byte(password),
-			[]byte(timestampStr),
-		},
-			nil),
-	)
-	return md5Bytes[:]
-}
-
-// GenConnectRespAuthISMG ...
-func GenConnectRespAuthISMG(statusBytes []byte, reqAuth string, password string) []byte {
-	m := md5.Sum(bytes.Join([][]byte{
-		statusBytes,
-		[]byte(reqAuth),
-		[]byte(password)},
-		nil),
-	)
-	return m[:]
+	return fmt.Sprintf("未知错误代码 %d", r)
 }

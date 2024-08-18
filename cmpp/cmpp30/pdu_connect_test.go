@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/hujm2023/go-sms-protocol/cmpp"
@@ -70,6 +71,38 @@ func (s *ConnectTestSuite) TestConnect_IEncode() {
 	s.Equal(string(cmpp.GenConnectAuth(c.SourceAddr, s.password, a)), c.AuthenticatorSource)
 }
 
+func (s *ConnectTestSuite) TestConnect_GenEmptyResponse() {
+	c := new(Connect)
+	assert.Nil(s.T(), c.IDecode(s.valueBytes))
+
+	resp := c.GenEmptyResponse()
+	r, ok := resp.(*ConnectResp)
+	s.True(ok)
+	s.Equal(cmpp.CommandConnectResp, r.Header.CommandID)
+	s.Equal(c.GetSequenceID(), r.Header.SequenceID)
+}
+
+func (s *ConnectTestSuite) TestConnect_GetSequenceID() {
+	c := new(Connect)
+	s.Nil(c.IDecode(s.valueBytes))
+	s.Equal(s.sequenceID, c.GetSequenceID())
+}
+
+func (s *ConnectTestSuite) TestConnect_GetCommand() {
+	c := new(Connect)
+	s.Nil(c.IDecode(s.valueBytes))
+	s.Equal(cmpp.CommandConnect, c.GetCommand())
+}
+
+func (s *ConnectTestSuite) TestConnect_SetSequenceID() {
+	c := new(Connect)
+	s.Nil(c.IDecode(s.valueBytes))
+
+	id := uint32(0x17)
+	c.SetSequenceID(id)
+	s.Equal(id, c.GetSequenceID())
+}
+
 func TestConnect(t *testing.T) {
 	suite.Run(t, new(ConnectTestSuite))
 }
@@ -128,6 +161,35 @@ func (s *ConnectRespTestSuite) TestConnectResp_IEncode() {
 
 	m := cmpp.GenConnectRespAuthISMG(statusBuf.Bytes(), string(s.auth), s.secret)
 	s.Equal(string(m), c.AuthenticatorISMG)
+}
+
+func (s *ConnectRespTestSuite) TestConnectResp_GetSequenceID() {
+	c := new(ConnectResp)
+	s.Nil(c.IDecode(s.valueBytes))
+	s.Equal(uint32(0x17), c.GetSequenceID())
+}
+
+func (s *ConnectRespTestSuite) TestConnectResp_GetCommand() {
+	c := new(ConnectResp)
+	s.Nil(c.IDecode(s.valueBytes))
+	s.Equal(cmpp.CommandConnectResp, c.GetCommand())
+}
+
+func (s *ConnectRespTestSuite) TestConnectResp_SetSequenceID() {
+	c := new(ConnectResp)
+	s.Nil(c.IDecode(s.valueBytes))
+
+	id := uint32(0x17)
+	c.SetSequenceID(id)
+	s.Equal(id, c.GetSequenceID())
+}
+
+func (s *ConnectRespTestSuite) TestConnectResp_GenEmptyResponse() {
+	c := new(ConnectResp)
+	s.Nil(c.IDecode(s.valueBytes))
+
+	resp := c.GenEmptyResponse()
+	s.Nil(resp)
 }
 
 func TestConnectResp(t *testing.T) {

@@ -3,44 +3,60 @@ package smpp
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
 type TLV struct {
-	Tag    uint16
-	Length uint16
-	Value  []byte
+	tag    uint16
+	length uint16
+	value  []byte
 }
 
 func NewTLV(tag uint16, value []byte) TLV {
 	return TLV{
-		Tag:    tag,
-		Length: uint16(len(value)),
-		Value:  value,
+		tag:    tag,
+		length: uint16(len(value)),
+		value:  value,
 	}
 }
 
-func NewTLVS(tag uint16, value string) TLV {
+func NewTLVByString(tag uint16, value string) TLV {
 	return NewTLV(tag, []byte(value))
 }
 
-func (t *TLV) Bytes() []byte {
-	b := make([]byte, t.Length+4)
-	binary.BigEndian.PutUint16(b[0:2], t.Tag)
-	binary.BigEndian.PutUint16(b[2:4], t.Length)
-	copy(b[4:], t.Value)
+func (t TLV) Bytes() []byte {
+	b := make([]byte, t.length+4)
+	binary.BigEndian.PutUint16(b[0:2], t.tag)
+	binary.BigEndian.PutUint16(b[2:4], t.length)
+	copy(b[4:], t.value)
 	return b
 }
 
-func ReadTLVs(r *packet.Reader) (map[uint16]TLV, error) {
+func (t TLV) Value() []byte {
+	return t.value
+}
+
+func (t TLV) IsEmpty() bool {
+	return t.tag == 0 && t.length == 0 && len(t.value) == 0
+}
+
+func (t TLV) String() string {
+	if t.IsEmpty() {
+		return ""
+	}
+	return fmt.Sprintf("TLV{Tag=%#x, Length=%d, Value=%v, ValueString=%s}", t.tag, t.length, t.value, string(t.value))
+}
+
+func ReadTLVs(r *packet.Reader) (TLVs, error) {
 	if r.Remaining() == 0 {
 		return nil, nil
 	}
 
 	if r.Error() != nil {
-		return nil, nil
+		return nil, r.Error()
 	}
 
 	tlvs := make(map[uint16]TLV)
@@ -74,9 +90,9 @@ func ReadTLVs(r *packet.Reader) (map[uint16]TLV, error) {
 		}
 
 		tlvs[tag] = TLV{
-			Tag:    tag,
-			Length: length,
-			Value:  value,
+			tag:    tag,
+			length: length,
+			value:  value,
 		}
 	}
 
@@ -123,9 +139,9 @@ func ReadTLVs1(r *packet.Reader) TLVs {
 		}
 
 		tlvs[tag] = TLV{
-			Tag:    tag,
-			Length: length,
-			Value:  value,
+			tag:    tag,
+			length: length,
+			value:  value,
 		}
 	}
 
@@ -134,10 +150,32 @@ func ReadTLVs1(r *packet.Reader) TLVs {
 
 type TLVs map[uint16]TLV
 
+func (t *TLVs) SetTLV(tlv TLV) {
+	if *t == nil {
+		*t = make(TLVs)
+	}
+	(*t)[tlv.tag] = tlv
+}
+
 func (t TLVs) Bytes() []byte {
 	b := make([]byte, 0)
 	for _, tlv := range t {
 		b = append(b, tlv.Bytes()...)
 	}
 	return b
+}
+
+func (t TLVs) String() string {
+	if len(t) == 0 {
+		return ""
+	}
+	s := "\n"
+	for idx := range t {
+		if t[idx].IsEmpty() {
+			continue
+		}
+		s += fmt.Sprintf("\t%s\n", t[idx].String())
+	}
+
+	return s
 }

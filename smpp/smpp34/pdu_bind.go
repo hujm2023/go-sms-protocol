@@ -1,6 +1,7 @@
 package smpp34
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
@@ -25,6 +26,23 @@ type Bind struct {
 
 	// CString, max 41
 	AddressRange string
+}
+
+func (b *Bind) GetSequenceID() uint32 {
+	return b.Header.Sequence
+}
+
+func (b *Bind) GetCommand() sms.ICommander {
+	return smpp.BIND_TRANSCEIVER
+}
+
+func (b *Bind) GenEmptyResponse() sms.PDU {
+	return &BindResp{
+		Header: smpp.Header{
+			ID:       smpp.BIND_TRANSCEIVER_RESP,
+			Sequence: b.Header.Sequence,
+		},
+	}
 }
 
 func (b *Bind) IDecode(data []byte) error {
@@ -68,13 +86,41 @@ func (b *Bind) SetSequenceID(id uint32) {
 	b.Header.Sequence = id
 }
 
+func (b *Bind) String() string {
+	s := packet.NewPDUStringer()
+	defer s.Release()
+
+	s.Write("Header", b.Header)
+	s.Write("SystemID", b.SystemID)
+	s.Write("Password", b.Password)
+	s.Write("SystemType", b.SystemType)
+	s.Write("InterfaceVersion", b.InterfaceVersion)
+	s.Write("AddrTon", b.AddrTon)
+	s.Write("AddrNpi", b.AddrNpi)
+	s.Write("AddressRange", b.AddressRange)
+
+	return s.String()
+}
+
 type BindResp struct {
 	smpp.Header
 
 	// CString, max 16
 	SystemID string
 
-	tlv smpp.TLVs
+	TLVs smpp.TLVs
+}
+
+func (b *BindResp) GetSequenceID() uint32 {
+	return b.Header.Sequence
+}
+
+func (b *BindResp) GetCommand() sms.ICommander {
+	return smpp.BIND_TRANSCEIVER_RESP
+}
+
+func (b *BindResp) GenEmptyResponse() sms.PDU {
+	return nil
 }
 
 func (b *BindResp) IEncode() ([]byte, error) {
@@ -85,7 +131,7 @@ func (b *BindResp) IEncode() ([]byte, error) {
 
 	buf.WriteCString(b.SystemID)
 
-	buf.WriteBytes(b.tlv.Bytes())
+	buf.WriteBytes(b.TLVs.Bytes())
 
 	return buf.BytesWithLength()
 }
@@ -102,11 +148,22 @@ func (b *BindResp) IDecode(data []byte) error {
 
 	b.SystemID = buf.ReadCString()
 
-	b.tlv = smpp.ReadTLVs1(buf)
+	b.TLVs = smpp.ReadTLVs1(buf)
 
 	return buf.Error()
 }
 
 func (b *BindResp) SetSequenceID(id uint32) {
 	b.Header.Sequence = id
+}
+
+func (b *BindResp) String() string {
+	s := packet.NewPDUStringer()
+	defer s.Release()
+
+	s.Write("Header", b.Header)
+	s.Write("SystemID", b.SystemID)
+	s.OmitWrite("TLVs", b.TLVs.String())
+
+	return s.String()
 }

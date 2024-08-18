@@ -19,4 +19,6 @@ func TestPduActiveTest(t *testing.T) {
 	encoded, err := a.IEncode()
 	assert.Nil(t, err)
 	assert.True(t, bytes.EqualFold(dataExpected, encoded))
+
+	t.Log(a.String())
 }

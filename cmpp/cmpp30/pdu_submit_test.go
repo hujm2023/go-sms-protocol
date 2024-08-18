@@ -79,6 +79,7 @@ func (s *SubmitTestSuite) TestSubmit_IEncode() {
 			break
 		}
 	}
+	s.T().Log(submit.String())
 }
 
 func (s *SubmitTestSuite) TestSubmit_IDecode() {
@@ -106,6 +107,38 @@ func (s *SubmitTestSuite) TestSubmit_IDecode() {
 	s.Equal(destTerminalType, submit.DestTerminalType)
 	s.Equal(msgLength, submit.MsgLength)
 	s.Equal(msgContent, submit.MsgContent)
+}
+
+func (s *SubmitTestSuite) TestSubmit_SetSequenceID() {
+	submit := new(Submit)
+	s.Nil(submit.IDecode(s.valueBytes))
+
+	id := uint32(0x20)
+	submit.SetSequenceID(id)
+	s.Equal(id, submit.GetSequenceID())
+}
+
+func (s *SubmitTestSuite) TestSubmit_GetSequenceID() {
+	submit := new(Submit)
+	s.Nil(submit.IDecode(s.valueBytes))
+
+	s.Equal(uint32(0x17), submit.GetSequenceID())
+}
+
+func (s *SubmitTestSuite) TestSubmit_GetCommand() {
+	submit := new(Submit)
+	s.Nil(submit.IDecode(s.valueBytes))
+
+	s.Equal(cmpp.CommandSubmit, submit.GetCommand())
+}
+
+func (s *SubmitTestSuite) TestSubmit_GenEmptyResponse() {
+	submit := new(Submit)
+	s.Nil(submit.IDecode(s.valueBytes))
+
+	resp := submit.GenEmptyResponse()
+	s.Equal(cmpp.CommandSubmitResp, resp.GetCommand())
+	s.Equal(uint32(0x17), resp.GetSequenceID())
 }
 
 func TestSubmit(t *testing.T) {
@@ -151,6 +184,37 @@ func (s *SubmitRespTestSuite) TestSubmitResp_IDecode() {
 	s.Equal(cmpp.CommandSubmitResp, submitResp.Header.CommandID)
 	s.Equal(uint32(0x17), submitResp.Header.SequenceID)
 	s.Equal(s.msgID, submitResp.MsgID)
+}
+
+func (s *SubmitRespTestSuite) TestSubmitResp_SetSequenceID() {
+	submitResp := new(SubmitResp)
+	s.Nil(submitResp.IDecode(s.valueBytes))
+
+	id := uint32(0x20)
+	submitResp.SetSequenceID(id)
+	s.Equal(id, submitResp.GetSequenceID())
+}
+
+func (s *SubmitRespTestSuite) TestSubmitResp_GetSequenceID() {
+	submitResp := new(SubmitResp)
+	s.Nil(submitResp.IDecode(s.valueBytes))
+
+	s.Equal(uint32(0x17), submitResp.GetSequenceID())
+}
+
+func (s *SubmitRespTestSuite) TestSubmitResp_GetCommand() {
+	submitResp := new(SubmitResp)
+	s.Nil(submitResp.IDecode(s.valueBytes))
+
+	s.Equal(cmpp.CommandSubmitResp, submitResp.GetCommand())
+}
+
+func (s *SubmitRespTestSuite) TestSubmitResp_GenEmptyResponse() {
+	submitResp := new(SubmitResp)
+	s.Nil(submitResp.IDecode(s.valueBytes))
+
+	resp := submitResp.GenEmptyResponse()
+	s.Nil(resp)
 }
 
 func TestSubmitResp(t *testing.T) {

@@ -18,6 +18,10 @@ type Header struct {
 	Sequence uint32
 }
 
+func (h Header) String() string {
+	return fmt.Sprintf(`{Length=%d, ID=%s, Status=(valueInt=%d,valueString=%s), Sequence=%d}`, h.Length, h.ID.String(), h.Status, h.Status.Error(), h.Sequence)
+}
+
 func NewPduHeader(l uint32, id CMDId, status CMDStatus, seq uint32) *Header {
 	return &Header{l, id, status, seq}
 }
@@ -122,12 +126,16 @@ func (s CMDId) String() string {
 	}
 }
 
+func (c CMDId) ToUint32() uint32 {
+	return uint32(c)
+}
+
 func (s CMDStatus) Error() string {
 	switch s {
 	default:
 		return fmt.Sprint("Unknown Status:", uint32(s))
 	case ESME_ROK:
-		return "No Error"
+		return "OK"
 	case ESME_RINVMSGLEN:
 		return "Message Length is invalid"
 	case ESME_RINVCMDLEN:
@@ -223,4 +231,8 @@ func (s CMDStatus) Error() string {
 	case ESME_RUNKNOWNERR:
 		return "Unknown Error"
 	}
+}
+
+func (s CMDStatus) String() string {
+	return fmt.Sprintf("SMPP_STATUS_%d:%s", s, s.Error())
 }

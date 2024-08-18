@@ -40,6 +40,28 @@ func (s *ActiveTestTesstSuite) TestActiveTest_IDecode() {
 	assert.Equal(s.T(), cmpp.CommandActiveTest, a.Header.CommandID)
 }
 
+func (s *ActiveTestTesstSuite) TestActiveTest_SetSequenceID() {
+	a := new(ActiveTest)
+	assert.Nil(s.T(), a.IDecode(s.valueBytes))
+	a.SetSequenceID(1234)
+	assert.Equal(s.T(), uint32(1234), a.GetSequenceID())
+}
+
+func (s *ActiveTestTesstSuite) TestActiveTest_GetCommand() {
+	a := new(ActiveTest)
+	assert.Nil(s.T(), a.IDecode(s.valueBytes))
+	assert.Equal(s.T(), cmpp.CommandActiveTest, a.GetCommand())
+}
+
+func (s *ActiveTestTesstSuite) TestActiveTest_GenEmptyResponse() {
+	a := new(ActiveTest)
+	assert.Nil(s.T(), a.IDecode(s.valueBytes))
+
+	resp := a.GenEmptyResponse()
+	assert.Equal(s.T(), cmpp.CommandActiveTestResp, resp.GetCommand())
+	assert.Equal(s.T(), uint32(0x17), resp.GetSequenceID())
+}
+
 func TestActiveTest(t *testing.T) {
 	suite.Run(t, new(ActiveTestTesstSuite))
 }
@@ -73,6 +95,27 @@ func (s *ActiveTestRespTestSuite) TestActiveTestResp_IDecode() {
 
 	assert.Equal(s.T(), uint32(0x17), a.Header.SequenceID)
 	assert.Equal(s.T(), cmpp.CommandActiveTestResp, a.Header.CommandID)
+}
+
+func (s *ActiveTestRespTestSuite) TestActiveTestResp_SetSequenceID() {
+	a := new(ActiveTestResp)
+	assert.Nil(s.T(), a.IDecode(s.valueBytes))
+	a.SetSequenceID(1234)
+	assert.Equal(s.T(), uint32(1234), a.GetSequenceID())
+}
+
+func (s *ActiveTestRespTestSuite) TestActiveTestResp_GetCommand() {
+	a := new(ActiveTestResp)
+	assert.Nil(s.T(), a.IDecode(s.valueBytes))
+	assert.Equal(s.T(), cmpp.CommandActiveTestResp, a.GetCommand())
+}
+
+func (s *ActiveTestRespTestSuite) TestActiveTestResp_GenEmptyResponse() {
+	a := new(ActiveTestResp)
+	assert.Nil(s.T(), a.IDecode(s.valueBytes))
+
+	resp := a.GenEmptyResponse()
+	assert.Nil(s.T(), resp)
 }
 
 func TestActiveTestResp(t *testing.T) {

@@ -1,6 +1,7 @@
 package smpp34
 
 import (
+	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
@@ -39,7 +40,7 @@ type DeliverSm struct {
 	SmLength     uint8
 	ShortMessage []byte
 
-	tlvs smpp.TLVs
+	TLVs smpp.TLVs
 }
 
 func (d *DeliverSm) IDecode(data []byte) error {
@@ -70,7 +71,7 @@ func (d *DeliverSm) IDecode(data []byte) error {
 	temp := make([]byte, d.SmLength)
 	buf.ReadBytes(temp)
 	d.ShortMessage = temp
-	d.tlvs = smpp.ReadTLVs1(buf)
+	d.TLVs = smpp.ReadTLVs1(buf)
 
 	return buf.Error()
 }
@@ -99,13 +100,58 @@ func (d *DeliverSm) IEncode() ([]byte, error) {
 	buf.WriteUint8(d.SmDefaultMsgId)
 	buf.WriteUint8(d.SmLength)
 	buf.WriteBytes(d.ShortMessage)
-	buf.WriteBytes(d.tlvs.Bytes())
+	buf.WriteBytes(d.TLVs.Bytes())
 
 	return buf.BytesWithLength()
 }
 
 func (d *DeliverSm) SetSequenceID(id uint32) {
 	d.Header.Sequence = id
+}
+
+func (d *DeliverSm) GetSequenceID() uint32 {
+	return d.Header.Sequence
+}
+
+func (d *DeliverSm) GetCommand() sms.ICommander {
+	return smpp.DELIVER_SM
+}
+
+func (d *DeliverSm) GenEmptyResponse() sms.PDU {
+	return &DeliverSmResp{
+		Header: smpp.Header{
+			ID:       smpp.DELIVER_SM_RESP,
+			Sequence: d.Header.Sequence,
+		},
+	}
+}
+
+func (d *DeliverSm) String() string {
+	s := packet.NewPDUStringer()
+	defer s.Release()
+
+	s.Write("Header", d.Header)
+	s.Write("ServiceType", d.ServiceType)
+	s.Write("SourceAddrTon", d.SourceAddrTon)
+	s.Write("SourceAddrNpi", d.SourceAddrNpi)
+	s.Write("SourceAddr", d.SourceAddr)
+	s.Write("DestAddrTon", d.DestAddrTon)
+	s.Write("DestAddrNpi", d.DestAddrNpi)
+	s.Write("DestinationAddr", d.DestinationAddr)
+	s.Write("ESMClass", d.ESMClass)
+	s.Write("ProtocolID", d.ProtocolID)
+	s.Write("PriorityFlag", d.PriorityFlag)
+	s.Write("ScheduleDeliveryTime", d.ScheduleDeliveryTime)
+	s.Write("ValidityPeriod", d.ValidityPeriod)
+	s.Write("RegisteredDelivery", d.RegisteredDelivery)
+	s.Write("ReplaceIfPresentFlag", d.ReplaceIfPresentFlag)
+	s.Write("DataCoding", d.DataCoding)
+	s.Write("SmDefaultMsgId", d.SmDefaultMsgId)
+	s.Write("SmLength", d.SmLength)
+	s.Write("ShortMessage", d.ShortMessage)
+	s.OmitWrite("TLVs", d.TLVs.String())
+
+	return s.String()
 }
 
 type DeliverSmResp struct {
@@ -140,4 +186,26 @@ func (d *DeliverSmResp) IEncode() ([]byte, error) {
 
 func (d *DeliverSmResp) SetSequenceID(id uint32) {
 	d.Header.Sequence = id
+}
+
+func (d *DeliverSmResp) GetSequenceID() uint32 {
+	return d.Header.Sequence
+}
+
+func (d *DeliverSmResp) GetCommand() sms.ICommander {
+	return smpp.DELIVER_SM_RESP
+}
+
+func (d *DeliverSmResp) GenEmptyResponse() sms.PDU {
+	return nil
+}
+
+func (d *DeliverSmResp) String() string {
+	s := packet.NewPDUStringer()
+	defer s.Release()
+
+	s.Write("Header", d.Header)
+	s.Write("MessageID", d.MessageID)
+
+	return s.String()
 }
