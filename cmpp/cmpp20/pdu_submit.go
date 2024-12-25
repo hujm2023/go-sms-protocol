@@ -153,7 +153,7 @@ func (p *PduSubmit) IDecode(data []byte) error {
 		p.DestTerminalID[i] = b.ReadCStringN(21)
 	}
 	p.MsgLength = b.ReadUint8()
-	p.MsgContent = b.ReadCStringN(int(p.MsgLength))
+	p.MsgContent = string(b.ReadNBytes(int(p.MsgLength)))
 	p.Reserve = b.ReadCStringN(8)
 
 	return b.Error()

@@ -70,9 +70,7 @@ func (s *SubmitSm) IDecode(data []byte) error {
 	s.DataCoding = r.ReadUint8()
 	s.SmDefaultMsgID = r.ReadUint8()
 	s.SmLength = r.ReadUint8()
-	temp := make([]byte, s.SmLength)
-	r.ReadBytes(temp)
-	s.ShortMessage = temp
+	s.ShortMessage = r.ReadNBytes(int(s.SmLength))
 	s.TLVs = smpp.ReadTLVs1(r)
 
 	return r.Error()

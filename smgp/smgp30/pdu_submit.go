@@ -103,7 +103,7 @@ func (s *Submit) IDecode(data []byte) error {
 		s.DestTermID = append(s.DestTermID, tmp)
 	}
 	s.MsgLength = b.ReadUint8()
-	s.MsgContent = b.ReadCStringN(int(s.MsgLength))
+	s.MsgContent = string(b.ReadNBytes(int(s.MsgLength)))
 	s.Reserve = b.ReadCStringN(8)
 
 	var parseErr error
