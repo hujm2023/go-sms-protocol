@@ -70,7 +70,7 @@ func (d *Deliver) IDecode(data []byte) error {
 	d.SrcTermID = b.ReadCStringN(21)
 	d.DestTermID = b.ReadCStringN(21)
 	d.MsgLength = b.ReadUint8()
-	d.MsgContent = b.ReadCStringNWithoutTrim(int(d.MsgLength))
+	d.MsgContent = string(b.ReadNBytes(int(d.MsgLength)))
 	d.Reserve = b.ReadCStringN(8)
 	d.Options = smgp.ReadOptions(b)
 
