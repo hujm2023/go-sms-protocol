@@ -15,77 +15,90 @@ import (
 	protocol "github.com/hujm2023/go-sms-protocol"
 )
 
-type (
-	UnpackFunc     func(ctx context.Context, r netpoll.Reader) (protocol.PDU, error)
-	HandleFunc     func(ctx context.Context, p protocol.PDU) (respData []byte, err error)
-	RefreshCtxFunc func(ctx context.Context) context.Context
-	OnCloseFunc    func(ctx context.Context, conn netpoll.Connection)
-)
+// UnpackFunc defines the function signature for unpacking data from the reader into a PDU.
+type UnpackFunc func(ctx context.Context, r netpoll.Reader) (protocol.PDU, error)
 
+// HandleFunc defines the function signature for handling business logic for a PDU.
+type HandleFunc func(ctx context.Context, p protocol.PDU) (respData []byte, err error)
+
+// RefreshCtxFunc defines the function signature for refreshing context before reading data.
+type RefreshCtxFunc func(ctx context.Context) context.Context
+
+// OnCloseFunc defines the function signature for the callback when a connection is closed.
+type OnCloseFunc func(ctx context.Context, conn netpoll.Connection)
+
+// ServerOption is the function option type for configuring BaseServer.
 type ServerOption[T any] func(*BaseServer[T])
 
+// WithNetpollOptions adds underlying netpoll options to the BaseServer.
 func WithNetpollOptions[T any](opts ...netpoll.Option) ServerOption[T] {
 	return func(s *BaseServer[T]) {
 		s.options = append(s.options, opts...)
 	}
 }
 
+// WithUnpackFunc sets the unpack function for the BaseServer.
 func WithUnpackFunc[T any](unpack UnpackFunc) ServerOption[T] {
 	return func(s *BaseServer[T]) {
-		s.unpack = unpack
+		s.unpackBlock = unpack
 	}
 }
 
+// WithHandleFunc sets the business handler function for the BaseServer.
 func WithHandleFunc[T any](handle HandleFunc) ServerOption[T] {
 	return func(s *BaseServer[T]) {
 		s.handle = handle
 	}
 }
 
+// WithRefreshCtxWhenRead sets the context refresh function for the BaseServer.
 func WithRefreshCtxWhenRead[T any](f RefreshCtxFunc) ServerOption[T] {
 	return func(s *BaseServer[T]) {
 		s.refreshCtxWhenRead = f
 	}
 }
 
+// WithLogger sets the logger for the BaseServer.
 func WithLogger[T any](logger hlog.FullLogger) ServerOption[T] {
 	return func(s *BaseServer[T]) {
 		s.logger = logger
 	}
 }
 
-// 修改 WithWorkerPool 以支持泛型 T
+// WithWorkerPool sets the worker goroutine pool for the BaseServer.
 func WithWorkerPool[T any](pool gopool.Pool) ServerOption[T] {
 	return func(s *BaseServer[T]) {
 		s.workerpool = pool
 	}
 }
 
-// 修改 WithOnCloseFunc 以支持泛型 T
+// WithOnCloseFunc sets the connection close callback function.
 func WithOnCloseFunc[T any](f OnCloseFunc) ServerOption[T] {
 	return func(s *BaseServer[T]) {
 		s.closeFunc = f
 	}
 }
 
-// 修改 BaseServer 以支持泛型 T
+// BaseServer is a generic TCP server implementation based on netpoll.
+// It handles connection management, data unpacking, business logic dispatching, and graceful shutdown.
 type BaseServer[T any] struct {
-	network, address string
-	options          []netpoll.Option
+	network, address string           // Network type and address to listen on
+	options          []netpoll.Option // Netpoll configuration options
 
-	unpack             UnpackFunc
-	handle             HandleFunc
-	refreshCtxWhenRead RefreshCtxFunc
-	closeFunc          OnCloseFunc
+	unpackBlock        UnpackFunc     // Data unpack function
+	handle             HandleFunc     // Business handler function
+	refreshCtxWhenRead RefreshCtxFunc // Context refresh function before read
+	closeFunc          OnCloseFunc    // Connection close callback
 
-	listener  netpoll.Listener
-	eventLoop netpoll.EventLoop
+	listener  netpoll.Listener  // Network listener
+	eventLoop netpoll.EventLoop // Netpoll event loop
 
-	workerpool gopool.Pool
-	logger     hlog.FullLogger
+	workerpool gopool.Pool     // Goroutine pool for business logic
+	logger     hlog.FullLogger // Logger instance
 }
 
-// 修改 NewBaseServer 以支持泛型 T
+// NewBaseServer creates and initializes a new BaseServer instance.
+// Requires network type, address, and server options. UnpackFunc and HandleFunc are mandatory.
 func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*BaseServer[T], error) {
 	server := &BaseServer[T]{
 		network: network,
@@ -94,15 +107,13 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 	for _, opt := range opts {
 		opt(server)
 	}
-	if server.unpack == nil {
+	if server.unpackBlock == nil {
 		return nil, fmt.Errorf("unpack func is nil")
 	}
 	if server.handle == nil {
 		return nil, fmt.Errorf("handle func is nil")
 	}
 
-	// 注意：这里需要将 server 的方法绑定传递给 netpoll
-	// 由于 Go 泛型方法的限制，我们需要创建闭包
 	onPrepare := func(conn netpoll.Connection) context.Context {
 		return server.OnOpenConn(conn)
 	}
@@ -119,7 +130,7 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 	}
 	server.options = append(server.options, nOpts...)
 	eventLoop, err := netpoll.NewEventLoop(
-		dispatch, // 使用闭包
+		dispatch,
 		server.options...,
 	)
 	if err != nil {
@@ -146,7 +157,9 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 	return server, nil
 }
 
-// 修改 Serve 的接收者
+// Serve starts the server's event loop and begins accepting connections.
+// It blocks until a termination signal (SIGINT, SIGTERM) is received or an error occurs.
+// 'wait' specifies the timeout duration for graceful shutdown.
 func (s *BaseServer[T]) Serve(wait time.Duration) {
 	errChan := make(chan error)
 	go func() {
@@ -173,27 +186,28 @@ func (s *BaseServer[T]) Serve(wait time.Duration) {
 	s.logger.Notice("!!!exited done.")
 }
 
-// 修改 DispatchRequest 以支持泛型 T
+// DispatchRequest is the netpoll request dispatch callback.
+// It reads data, unpacks it using UnpackFunc, and submits the PDU to the worker pool for handling by HandleFunc.
 func (s *BaseServer[T]) DispatchRequest(ctx context.Context, conn netpoll.Connection) error {
 	if s.refreshCtxWhenRead != nil {
 		ctx = s.refreshCtxWhenRead(ctx)
 	}
-	// 从ctx中解析出自己的 conn
-	// 使用泛型 GetCtxConn
+	// From ctx get the own conn
+	// Use generic GetCtxConn
 	mc, ok := GetCtxConn[T](ctx)
 	if !ok {
-		// 理论上不应该发生，因为 OnOpenConn 总是会填充 context
+		// Theoretically should not happen, because OnOpenConn always fills context
 		s.logger.CtxErrorf(ctx, "failed to get connection from context")
-		_ = conn.Close() // 关闭连接以防万一
+		_ = conn.Close() // Close connection just in case
 		return fmt.Errorf("failed to get connection from context")
 	}
 
 	reader := conn.Reader()
 
-	// unpack中调用
+	// unpack invoke
 	// 1. 这里是水平触发的，只读一个包就行。如果没有具体的数据，建议通过 Next(n) 等待
 	// 2. 如果使用了 Zero-Copy 相关函数，记得 Release
-	rPDU, err := s.unpack(ctx, reader)
+	rPDU, err := s.unpackBlock(ctx, reader)
 	if err != nil {
 		return err
 	}
@@ -203,25 +217,25 @@ func (s *BaseServer[T]) DispatchRequest(ctx context.Context, conn netpoll.Connec
 	s.workerpool.Go(func() {
 		// 处理这个PDU
 		respData, err := s.handle(ctx, rPDU)
+		// 有数据要返回，先写，再判断是否要关闭
+		if len(respData) > 0 {
+			s.logger.CtxDebugf(ctx, " == write data: %+v", respData)
+			mc.AsyncWrite(ctx, respData)
+		}
+
 		if err != nil {
 			s.logger.CtxErrorf(ctx, "handle pdu error: %v", err)
 			// 关闭连接
-			_ = mc.(interface{ Close() error }).Close() // 需要类型断言来调用 Close
+			_ = mc.Close()
 			return
 		}
-		if len(respData) == 0 {
-			// 没有要回写的数据
-			return
-		}
-
-		s.logger.CtxDebugf(ctx, " == write data: %+v", respData)
-		mc.AsyncWrite(ctx, respData)
 	})
 
 	return nil
 }
 
-// 修改 OnOpenConn 以支持泛型 T
+// OnOpenConn is the netpoll connection established callback (set via WithOnPrepare).
+// It creates a muxConn instance and populates the context with it.
 func (s *BaseServer[T]) OnOpenConn(conn netpoll.Connection) context.Context {
 	s.logger.Noticef("[OnOpenConn] %s connected", conn.RemoteAddr().String())
 	// 创建泛型 muxConn
@@ -231,7 +245,8 @@ func (s *BaseServer[T]) OnOpenConn(conn netpoll.Connection) context.Context {
 	return ctx
 }
 
-// 修改 OnCloseConn 以支持泛型 T
+// OnCloseConn is the netpoll connection closed callback (set via WithOnDisconnect).
+// It logs the closure, executes the user-defined OnCloseFunc, and closes associated resources.
 func (s *BaseServer[T]) OnCloseConn(ctx context.Context, conn netpoll.Connection) {
 	s.logger.Noticef("[OnCloseConn] %s closed", conn.RemoteAddr().String())
 
@@ -249,7 +264,5 @@ func (s *BaseServer[T]) OnCloseConn(ctx context.Context, conn netpoll.Connection
 	// 需要类型断言来访问内部的 wqueue
 	if muxConnInst, ok := mc.(*muxConn[T]); ok {
 		_ = muxConnInst.wqueue.Close()
-	} else {
-		s.logger.CtxErrorf(ctx, "connection is not of type *muxConn[T] on close")
 	}
 }
