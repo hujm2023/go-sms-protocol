@@ -18,6 +18,7 @@ const (
 	MaxQueryLength          = HeaderLength + 8 + 1 + 10 + 8
 	MaxQueryRespLength      = HeaderLength + 8 + 1 + 10 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4
 )
+
 const (
 	DELIVERED     = "DELIVRD" // 成功送达
 	UNDELIVERABLE = "UNDELIV" // 无法送达

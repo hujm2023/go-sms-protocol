@@ -3,8 +3,9 @@ package smpp34
 import (
 	"testing"
 
-	"github.com/hujm2023/go-sms-protocol/smpp"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
 type EnquireLinkTestSuite struct {

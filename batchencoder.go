@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"sort"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/hujm2023/go-sms-protocol/datacoding"
 	gsm7 "github.com/hujm2023/go-sms-protocol/datacoding/gsm7encoding"

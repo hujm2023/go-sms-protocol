@@ -3,9 +3,10 @@ package cmpp30
 import (
 	"testing"
 
-	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
 type ActiveTestTesstSuite struct {

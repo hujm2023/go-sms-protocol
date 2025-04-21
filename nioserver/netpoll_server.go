@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/bytedance/gopkg/util/gopool"
-
 	"github.com/cloudwego/netpoll"
-	protocol "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/hlog"
+
+	protocol "github.com/hujm2023/go-sms-protocol"
 )
 
 type (
