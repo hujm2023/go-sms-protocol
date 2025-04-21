@@ -6,5 +6,5 @@ Implementation of SMS Standard Protocol in Go Language
 - [x] SMPP5.0
 - [x] CMPP2.0
 - [x] CMPP3.0
-- [ ] SGIP1.2
-- [ ] SMGP3.0
+- [x] SGIP1.2
+- [x] SMGP3.0
