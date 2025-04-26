@@ -1,7 +1,6 @@
 package cmpp20
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,8 @@ func TestPduActiveTest(t *testing.T) {
 
 	encoded, err := a.IEncode()
 	assert.Nil(t, err)
-	assert.True(t, bytes.EqualFold(dataExpected, encoded))
+	assert.Equal(t, dataExpected, encoded)
+	// assert.True(t, bytes.EqualFold(dataExpected, encoded))
 
 	t.Log(a.String())
 }

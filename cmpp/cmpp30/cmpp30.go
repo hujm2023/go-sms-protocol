@@ -5,7 +5,7 @@ import (
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
-// DecodeCMPP30 ...
+// DecodeCMPP30 decodes the given byte slice into a corresponding CMPP 3.0 PDU.
 func DecodeCMPP30(data []byte) (sms.PDU, error) {
 	header, err := cmpp.PeekHeader(data)
 	if err != nil {

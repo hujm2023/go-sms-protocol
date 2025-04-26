@@ -49,8 +49,8 @@ var ctxkey connkey
 type muxConn[T any] struct {
 	conn          netpoll.Connection
 	wqueue        *mux.ShardQueue // Sharded queue for write operations
-	sequenceIDGen *atomic.Uint32  // Sequence ID generator
-	noActiveTest  *atomic.Int32   // Counter for missed active test responses
+	sequenceIDGen uint32          // Sequence ID generator
+	noActiveTest  uint32          // Counter for missed active test responses
 	remoteAddr    string          // Cached remote address string
 	bizData       atomic.Value    // Stores business data of type T atomically
 }
@@ -61,8 +61,8 @@ func newSvrMuxConn[T any](conn netpoll.Connection) *muxConn[T] {
 	mc.conn = conn
 	mc.remoteAddr = conn.RemoteAddr().String()
 	mc.wqueue = mux.NewShardQueue(mux.ShardSize, conn)
-	mc.sequenceIDGen = &atomic.Uint32{}
-	mc.noActiveTest = &atomic.Int32{}
+	mc.sequenceIDGen = 0
+	mc.noActiveTest = 0
 	// Initialize bizData with the zero value of T to prevent panic on Load.
 	var zero T
 	mc.bizData.Store(zero)
@@ -85,9 +85,9 @@ func (m *muxConn[T]) RemoteAddr() string {
 // NextSequenceID atomically increments and returns the next message sequence ID.
 // It wraps around to 1 after reaching the max uint32 value (skipping 0).
 func (m *muxConn[T]) NextSequenceID() uint32 {
-	n := m.sequenceIDGen.Add(1)
+	n := atomic.AddUint32(&m.sequenceIDGen, 1)
 	if n == 0 {
-		n = m.sequenceIDGen.Add(1)
+		n = atomic.AddUint32(&m.sequenceIDGen, 1)
 	}
 	return n
 }
@@ -111,13 +111,13 @@ func (m *muxConn[T]) SetBizData(data T) {
 
 // NoActiveTestCount atomically increments and returns the count of consecutive missed active test responses.
 func (m *muxConn[T]) NoActiveTestCount() int {
-	return int(m.noActiveTest.Add(1))
+	return int(atomic.LoadUint32(&m.noActiveTest))
 }
 
 // OnReceiveActiveTest atomically resets the missed active test response counter to 0.
 func (m *muxConn[T]) OnReceiveActiveTest() {
 	// Reset to 0
-	m.noActiveTest.Store(0)
+	atomic.StoreUint32(&m.noActiveTest, 0)
 }
 
 func (m *muxConn[T]) Close() error {

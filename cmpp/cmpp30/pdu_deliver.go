@@ -6,57 +6,61 @@ import (
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
+// Deliver represents a CMPP 3.0 Deliver PDU.
+// It is used by the ISMG to deliver a short message (including status reports) to the SP.
 type Deliver struct {
 	cmpp.Header
 
-	/* 8 字节，信息标识，采用 64 位(8 字节)的整数:
-	(1)时间(格式为 MMDDHHMMSS，即月日时分秒):bit64~bit39，其中
-		bit64~bit61:月份的二进制表示;
-		bit60~bit56:日的二进制表示;
-		bit55~bit51:小时的二进制表示;
-		bit50~bit45:分的二进制表示;
-		bit44~bit39:秒的二进制表示;
-	(2)短信网关代码:bit38~bit17，把短信 网关的代码转换为整数填写到该字 段中。
-	(3)序列号:bit16~bit1，顺序增加，步 长为 1，循环使用。
-	各部分如不能填满，左补零，右对齐。
+	/* MsgID is the message identifier (8 bytes), a 64-bit integer:
+	(1) Time (MMDDHHMMSS format): bits 64-39
+	    - bits 64-61: Month (binary)
+	    - bits 60-56: Day (binary)
+	    - bits 55-51: Hour (binary)
+	    - bits 50-45: Minute (binary)
+	    - bits 44-39: Second (binary)
+	(2) SMS Gateway Code: bits 38-17 (integer representation of the gateway code)
+	(3) Sequence Number: bits 16-1 (sequentially increasing, wraps around)
+	Left-pad with zeros if necessary, right-aligned.
 	*/
 	MsgID uint64
 
-	// 21字节，目标号码
-	// SP 的服务代码，一般 4--6 位，或者是前缀为服务代码的长号码;该号码是手机用户短消息的被叫号码。
+	// DestID is the destination number (21 bytes).
+	// SP's service code (usually 4-6 digits) or a long number prefixed with the service code.
+	// This is the called number for the mobile user's short message.
 	DestID string
 
-	// 10 字节，业务类型，是数字、字母和符号的 组合。
+	// ServiceID is the service type (10 bytes), a combination of digits, letters, and symbols.
 	ServiceID string
 
-	// 1 字节，GSM 协议类型。详情请参考 GSM3.40 中的9.2.3.9: https://www.etsi.org/deliver/etsi_gts/03/0340/05.03.00_60/gsmts_0340v050300p.pdf
+	// TpPID is the GSM protocol type (1 byte). See GSM 03.40 section 9.2.3.9.
 	TpPID uint8
 
-	// 1 字节，GSM 协议类型。详细是解释请参考 GSM03.40 中的 9.2.3.23,仅使用 1 位，右对齐
+	// TpUDHI is the GSM protocol type (1 byte). See GSM 03.40 section 9.2.3.23 (only 1 bit used, right-aligned).
 	TpUDHI uint8
 
-	// 1 字节，信息格式 --> 0:ASCII 串 3:短信写卡操作 4:二进制信息 8:UCS2 编码 15:含GB汉字
+	// MsgFmt is the message format (1 byte): 0=ASCII, 3=SMS Write Card, 4=Binary, 8=UCS2, 15=GB Hanzi.
 	MsgFmt uint8
 
-	// 32字节，源终端 MSISDN 号码(状态报告时填为 PduSubmit 消息的目的终端号码)
+	// SrcTerminalID is the source terminal MSISDN (32 bytes). For status reports, it's the destination terminal number from the Submit PDU.
 	SrcTerminalID string `safe_json:"-"`
 
-	// 1 字节，源终端号码类型，0：真实号码；1：伪码
+	// SrcTerminalType is the source terminal number type (1 byte): 0=Real number, 1=Pseudo code.
 	SrcTerminalType uint8
 
-	// 1 字节，是否为状态报告 --> 0:非状态报告(上行) 1:状态报告(回执)
+	// RegisteredDeliver indicates if it's a status report (1 byte): 0=Not a status report (MO), 1=Status report (receipt).
 	RegisteredDeliver uint8
 
-	// 1 字节，消息长度
+	// MsgLength is the message length (1 byte).
 	MsgLength uint8
 
-	// MsgLength 个字节，消息内容
+	// MsgContent is the message content (MsgLength bytes).
 	MsgContent string
 
-	// 20 字节，点播业务使用的 LinkID，非点播类业务的 MT 流程不使用该字段
+	// LinkID is used for on-demand services (20 bytes). Not used in non-on-demand MT processes.
 	LinkID string
 }
 
+// IDecode decodes the byte slice into a Deliver PDU.
 func (d *Deliver) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
@@ -82,6 +86,7 @@ func (d *Deliver) IDecode(data []byte) error {
 	return b.Error()
 }
 
+// IEncode encodes the Deliver PDU into a byte slice.
 func (d *Deliver) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
@@ -103,18 +108,22 @@ func (d *Deliver) IEncode() ([]byte, error) {
 	return b.BytesWithLength()
 }
 
+// SetSequenceID sets the sequence ID of the PDU.
 func (d *Deliver) SetSequenceID(id uint32) {
 	d.Header.SequenceID = id
 }
 
+// GetSequenceID returns the sequence ID of the PDU.
 func (d *Deliver) GetSequenceID() uint32 {
 	return d.Header.SequenceID
 }
 
+// GetCommand returns the command ID of the PDU.
 func (d *Deliver) GetCommand() sms.ICommander {
 	return cmpp.CommandDeliver
 }
 
+// GenEmptyResponse generates an empty response PDU for the Deliver.
 func (d *Deliver) GenEmptyResponse() sms.PDU {
 	return &DeliverResp{
 		Header: cmpp.Header{
@@ -124,6 +133,7 @@ func (d *Deliver) GenEmptyResponse() sms.PDU {
 	}
 }
 
+// String returns a string representation of the Deliver PDU.
 func (d *Deliver) String() string {
 	w := packet.NewPDUStringer()
 	defer w.Release()
@@ -147,18 +157,28 @@ func (d *Deliver) String() string {
 
 // -----------------------------------------------------------------------------------------------------
 
+// DeliverResp represents a CMPP 3.0 DeliverResp PDU.
+// It is the response to a Deliver PDU.
 type DeliverResp struct {
 	Header cmpp.Header
-	// 8 字节，信息标识（CMPP_DELIVER 中的 Msg_Id 字段）
+	// MsgID is the message identifier from the corresponding Deliver PDU (8 bytes).
 	MsgID uint64
 
-	// 4 字节, 回执结果
-	// 0:正确
-	// 1:消息结构错 2:命令字错 3:消息序号重复 4:消息长度错 5:资费代码错
-	// 6:超过最大信息长 7:业务代码错 8: 流量控制错 9~ :其他错误
+	// Result indicates the result of processing the Deliver PDU (4 bytes).
+	// 0: Success
+	// 1: Invalid message structure
+	// 2: Invalid command ID
+	// 3: Duplicate sequence ID
+	// 4: Invalid message length
+	// 5: Invalid fee code
+	// 6: Message length exceeds maximum
+	// 7: Invalid service ID
+	// 8: Flow control error
+	// 9+: Other errors
 	Result uint32
 }
 
+// IDecode decodes the byte slice into a DeliverResp PDU.
 func (d *DeliverResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
@@ -173,6 +193,7 @@ func (d *DeliverResp) IDecode(data []byte) error {
 	return b.Error()
 }
 
+// IEncode encodes the DeliverResp PDU into a byte slice.
 func (d *DeliverResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
@@ -184,22 +205,27 @@ func (d *DeliverResp) IEncode() ([]byte, error) {
 	return b.BytesWithLength()
 }
 
+// SetSequenceID sets the sequence ID of the PDU.
 func (d *DeliverResp) SetSequenceID(id uint32) {
 	d.Header.SequenceID = id
 }
 
+// GetSequenceID returns the sequence ID of the PDU.
 func (d *DeliverResp) GetSequenceID() uint32 {
 	return d.Header.SequenceID
 }
 
+// GetCommand returns the command ID of the PDU.
 func (d *DeliverResp) GetCommand() sms.ICommander {
 	return cmpp.CommandDeliverResp
 }
 
+// GenEmptyResponse generates an empty response PDU (nil for DeliverResp).
 func (d *DeliverResp) GenEmptyResponse() sms.PDU {
 	return nil
 }
 
+// String returns a string representation of the DeliverResp PDU.
 func (d *DeliverResp) String() string {
 	w := packet.NewPDUStringer()
 	defer w.Release()

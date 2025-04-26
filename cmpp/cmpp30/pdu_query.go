@@ -6,22 +6,26 @@ import (
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
+// Query represents a CMPP 3.0 Query PDU.
+// It is used by the SP to query the statistics of messages sent on a specific day.
 type Query struct {
 	cmpp.Header
 
-	// 8 字节，时间。格式：YYYYMMDD(精确至日)
+	// Time is the time in YYYYMMDD format (8 bytes).
 	Time string
 
-	// 1 字节，查询类型：0 总数查询,1 按业务类型查询
+	// QueryType indicates the query type (1 byte): 0 for total count, 1 for query by service type.
 	QueryType uint8
 
-	// 10 字节，查询码：当 QueryType=0时，此项无效；当 QueryType=1时，此项填写业务类型 ServiceID
+	// QueryCode is the query code (10 bytes). Invalid when QueryType=0; ServiceID when QueryType=1.
 	QueryCode string
 
-	// 8 字节，保留项
+	// Reserve is a reserved field (8 bytes).
 	Reserve string
 }
 
+// IDecode decodes the byte slice into a Query PDU.
+// IDecode decodes the byte slice into a Query PDU.
 func (q *Query) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
@@ -38,6 +42,8 @@ func (q *Query) IDecode(data []byte) error {
 	return b.Error()
 }
 
+// IEncode encodes the Query PDU into a byte slice.
+// IEncode encodes the Query PDU into a byte slice.
 func (q *Query) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
@@ -51,18 +57,26 @@ func (q *Query) IEncode() ([]byte, error) {
 	return b.BytesWithLength()
 }
 
+// SetSequenceID sets the sequence ID of the PDU.
+// SetSequenceID sets the sequence ID of the PDU.
 func (q *Query) SetSequenceID(id uint32) {
 	q.Header.SequenceID = id
 }
 
+// GetSequenceID returns the sequence ID of the PDU.
+// GetSequenceID returns the sequence ID of the PDU.
 func (q *Query) GetSequenceID() uint32 {
 	return q.Header.SequenceID
 }
 
+// GetCommand returns the command ID of the PDU.
+// GetCommand returns the command ID of the PDU.
 func (q *Query) GetCommand() sms.ICommander {
 	return cmpp.CommandQuery
 }
 
+// GenEmptyResponse generates an empty response PDU for the Query.
+// GenEmptyResponse generates an empty response PDU for the Query.
 func (q *Query) GenEmptyResponse() sms.PDU {
 	return &QueryResp{
 		Header: cmpp.Header{
@@ -72,6 +86,8 @@ func (q *Query) GenEmptyResponse() sms.PDU {
 	}
 }
 
+// String returns a string representation of the Query PDU.
+// String returns a string representation of the Query PDU.
 func (q *Query) String() string {
 	w := packet.NewPDUStringer()
 	defer w.Release()
@@ -85,43 +101,47 @@ func (q *Query) String() string {
 	return w.String()
 }
 
+// QueryResp represents a CMPP 3.0 QueryResp PDU.
+// It is the response to a Query PDU.
 type QueryResp struct {
 	cmpp.Header
 
-	// 8 字节，时间。格式：YYYYMMDD(精确至日)
+	// Time is the time in YYYYMMDD format (8 bytes).
 	Time string
 
-	// 1 字节，查询类型：0 总数查询, 1 按业务类型查询
+	// QueryType indicates the query type (1 byte): 0 for total count, 1 for query by service type.
 	QueryType uint8
 
-	// 10 字节，查询码：当 QueryType=0时，此项无效；当 QueryType=1时，此项填写业务类型 ServiceID
+	// QueryCode is the query code (10 bytes). Invalid when QueryType=0; ServiceID when QueryType=1.
 	QueryCode string
 
-	// 4 字节，从 SP 接收信息总数
+	// MtTLMsg is the total number of MT messages received from SP (4 bytes).
 	MtTLMsg uint32
 
-	// 4 字节，从 SP 接收用户总数
+	// MtTlUsr is the total number of MT users received from SP (4 bytes).
 	MtTlUsr uint32
 
-	// 4 字节，成功转发数量
+	// MtScs is the number of successfully forwarded MT messages (4 bytes).
 	MtScs uint32
 
-	// 4 字节，待转发数量
+	// MtWT is the number of MT messages waiting to be forwarded (4 bytes).
 	MtWT uint32
 
-	// 4 字节，转发失败数量
+	// MtFL is the number of failed MT messages (4 bytes).
 	MtFL uint32
 
-	// 4 字节，向 SP 成功送达数量
+	// MoScs is the number of MO messages successfully delivered to SP (4 bytes).
 	MoScs uint32
 
-	// 4 字节，向 SP 待送达数量
+	// MoWT is the number of MO messages waiting to be delivered to SP (4 bytes).
 	MoWT uint32
 
-	// 4 字节，向 SP 送达失败数量
+	// MoFL is the number of MO messages failed to be delivered to SP (4 bytes).
 	MoFL uint32
 }
 
+// IDecode decodes the byte slice into a QueryResp PDU.
+// IDecode decodes the byte slice into a QueryResp PDU.
 func (q *QueryResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
@@ -145,6 +165,8 @@ func (q *QueryResp) IDecode(data []byte) error {
 	return b.Error()
 }
 
+// IEncode encodes the QueryResp PDU into a byte slice.
+// IEncode encodes the QueryResp PDU into a byte slice.
 func (q *QueryResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
@@ -165,22 +187,32 @@ func (q *QueryResp) IEncode() ([]byte, error) {
 	return b.BytesWithLength()
 }
 
+// SetSequenceID sets the sequence ID of the PDU.
+// SetSequenceID sets the sequence ID of the PDU.
 func (q *QueryResp) SetSequenceID(id uint32) {
 	q.Header.SequenceID = id
 }
 
+// GetSequenceID returns the sequence ID of the PDU.
+// GetSequenceID returns the sequence ID of the PDU.
 func (q *QueryResp) GetSequenceID() uint32 {
 	return q.Header.SequenceID
 }
 
+// GetCommand returns the command ID of the PDU.
+// GetCommand returns the command ID of the PDU.
 func (q *QueryResp) GetCommand() sms.ICommander {
 	return cmpp.CommandQueryResp
 }
 
+// GenEmptyResponse generates an empty response PDU (nil for QueryResp).
+// GenEmptyResponse generates an empty response PDU (nil for QueryResp).
 func (q *QueryResp) GenEmptyResponse() sms.PDU {
 	return nil
 }
 
+// String returns a string representation of the QueryResp PDU.
+// String returns a string representation of the QueryResp PDU.
 func (q *QueryResp) String() string {
 	w := packet.NewPDUStringer()
 	defer w.Release()

@@ -11,7 +11,7 @@ import (
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
-// NewConnect ...
+// NewConnect creates a new PduConnect PDU.
 func NewConnect(account, passwd string, seqID uint32) *PduConnect {
 	t, ts := now()
 	md5Bytes := md5.Sum(
@@ -32,26 +32,28 @@ func NewConnect(account, passwd string, seqID uint32) *PduConnect {
 	return connectPdu
 }
 
-// NewTerminatePacket ...
+// NewTerminatePacket creates a new PduTerminate PDU and encodes it into a byte slice.
 func NewTerminatePacket(seqID uint32) []byte {
 	pdu := &PduTerminate{Header: cmpp.NewHeader(0, cmpp.CommandTerminate, seqID)}
 	data, _ := pdu.IEncode()
 	return data
 }
 
-// NewActiveTestPacket ...
+// NewActiveTestPacket creates a new PduActiveTest PDU and encodes it into a byte slice.
 func NewActiveTestPacket(seqID uint32) []byte {
 	pdu := &PduActiveTest{Header: cmpp.NewHeader(MaxActiveTestLength, cmpp.CommandActiveTest, seqID)}
 	data, _ := pdu.IEncode()
 	return data
 }
 
+// now generates the current timestamp in MMDDHHMMSS format (string and uint32).
 func now() (string, uint32) {
 	s := time.Now().Format("0102150405")
 	i, _ := strconv.Atoi(s)
 	return s, uint32(i)
 }
 
+// DecodeCMPP20 decodes the given byte slice into a corresponding CMPP 2.0 PDU.
 func DecodeCMPP20(data []byte) (sms.PDU, error) {
 	header, err := cmpp.PeekHeader(data)
 	if err != nil {

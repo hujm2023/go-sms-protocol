@@ -23,7 +23,7 @@ func (s *LoginTestSuite) SetupTest() {
 
 func (s *LoginTestSuite) TestLogin_IDecode() {
 	c := Login{
-		Header:    smgp.Header{12, smgp.CommandLogin, 1},
+		Header:    smgp.Header{TotalLength: 12, CommandID: smgp.CommandLogin, SequenceID: 1},
 		ClientID:  "testid",
 		LoginMode: smgp.SEND_MODE,
 		Version:   0x30,
@@ -68,7 +68,7 @@ func (s *LoginRespTestSuite) SetupTest() {
 
 func (s *LoginRespTestSuite) TestLoginResp_IEncode() {
 	c := LoginResp{
-		Header:              smgp.Header{12, smgp.CommandLoginResp, 1},
+		Header:              smgp.Header{TotalLength: 12, CommandID: smgp.CommandLoginResp, SequenceID: 1},
 		Status:              0,
 		AuthenticatorServer: "AuthServer",
 		ServerVersion:       0x30,
