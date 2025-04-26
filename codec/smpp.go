@@ -8,14 +8,18 @@ import (
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
 
+// SMPPCodec provides methods for encoding and decoding SMPP PDUs.
+// It handles sticky packets for the SMPP protocol.
 type SMPPCodec struct{}
 
+// NewSMPPCodec creates and returns a new SMPPCodec instance.
 func NewSMPPCodec() *SMPPCodec {
 	return new(SMPPCodec)
 }
 
 // Decode implements sticky packet handling for the SMPP protocol,
 // reading a complete SMPP packet from the ConnReader.
+// It attempts to read without blocking.
 // If the data is incomplete, it will return ErrPacketNotComplete.
 func (cc *SMPPCodec) Decode(c ConnReader) ([]byte, error) {
 	totalLenBytes, _ := c.Peek(smpp.MinSMPPHeaderLen)
@@ -44,6 +48,8 @@ func (cc *SMPPCodec) Decode(c ConnReader) ([]byte, error) {
 	return buf, nil
 }
 
+// DecodeBlocked reads a complete SMPP packet from the ConnReader in a blocking manner.
+// It reads the command length first, then reads the remaining bytes.
 func (cc *SMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
 	totalLenBytes := make([]byte, smpp.MinSMPPHeaderLen)
 	_, err := io.ReadFull(c, totalLenBytes)

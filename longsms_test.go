@@ -147,11 +147,11 @@ func TestSplitSMPPLongContent(t *testing.T) {
 			res := ""
 			for i := 0; i < len(contents); i++ {
 				t.Log(contents[i])
-				content, err := DecodeSMPPCContent(context.Background(), string(contents[i][6:]), actualCoding.ToInt())
+				c, err := DecodeSMPPCContent(context.Background(), string(contents[i][6:]), actualCoding.ToInt())
 				if err != nil {
 					t.Fatal(err)
 				}
-				res += content
+				res += c
 			}
 			assert.Equal(t, content, res)
 		})

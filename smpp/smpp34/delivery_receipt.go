@@ -25,9 +25,9 @@ func (d DeliveryReceipt) Valid() bool {
 	return false
 }
 
-// ExtractDeliveryReceipt 将short_message字符串提取为 DeliveryReceipt 结构体.
+// ExtractDeliveryReceipt extracts the short_message string into a DeliveryReceipt struct.
 func ExtractDeliveryReceipt(s string) (d DeliveryReceipt, err error) {
-	// TODO: 考虑key存在大写的情况
+	// TODO: Consider the case where the key is in uppercase
 	d.ID = findSubValue(s, "id", 10)
 	d.Sub = findSubValue(s, "sub", 3)
 	d.Dlvrd = findSubValue(s, "dlvrd", 3)

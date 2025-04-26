@@ -11,27 +11,32 @@ import (
 )
 
 const (
-	HeaderLength           = 12
+	// HeaderLength defines the fixed length of the CMPP PDU header.
+	HeaderLength = 12
+	// PacketTotalLengthBytes defines the number of bytes used for the TotalLength field in the header.
 	PacketTotalLengthBytes = 4
 )
 
 var (
+	// ErrIllegalHeaderLength indicates that the provided data length is less than the required header length.
 	ErrIllegalHeaderLength = errors.New("cmpp2 header length is invalid")
-	ErrInvalidPudLength    = errors.New("invalid pdu length")
+	// ErrInvalidPudLength indicates that the PDU length specified in the header is invalid or inconsistent.
+	ErrInvalidPudLength = errors.New("invalid pdu length")
 )
 
-// Header CMPP PduCMPP 的公共 header
+// Header represents the common header structure for all CMPP PDUs.
 type Header struct {
-	// 4 字节，消息总长度
+	// TotalLength is the total length of the PDU in bytes, including the header.
 	TotalLength uint32
 
-	// 4 字节，命令或相应类型
+	// CommandID identifies the type of the CMPP command or response.
 	CommandID CommandID
 
-	// 4 字节，消息流水号
+	// SequenceID is the sequence number of the message, used for matching requests and responses.
 	SequenceID uint32
 }
 
+// Bytes encodes the Header struct into a byte slice.
 func (h Header) Bytes() []byte {
 	b := make([]byte, 0, HeaderLength)
 	buf := bytes.NewBuffer(b)
@@ -41,14 +46,17 @@ func (h Header) Bytes() []byte {
 	return buf.Bytes()
 }
 
+// String returns a string representation of the Header.
 func (h Header) String() string {
 	return fmt.Sprintf("{TotalLength:%d, CommandID:%s, SequenceID:%d}", h.TotalLength, h.CommandID.String(), h.SequenceID)
 }
 
+// NewHeader creates a new Header instance.
 func NewHeader(totalLength uint32, commandID CommandID, sequenceID uint32) Header {
 	return Header{TotalLength: totalLength, CommandID: commandID, SequenceID: sequenceID}
 }
 
+// NewHeaderFromBytes decodes a Header from a byte slice.
 func NewHeaderFromBytes(d []byte) (h Header, err error) {
 	if len(d) < MinCMPPPduLength {
 		return h, ErrIllegalHeaderLength
@@ -58,6 +66,7 @@ func NewHeaderFromBytes(d []byte) (h Header, err error) {
 	return NewHeaderFromReader(buf)
 }
 
+// NewHeaderFromReader decodes a Header from an io.Reader.
 func NewHeaderFromReader(buf io.Reader) (Header, error) {
 	var h Header
 	if err := binary.Read(buf, binary.BigEndian, &h.TotalLength); err != nil {
@@ -72,7 +81,8 @@ func NewHeaderFromReader(buf io.Reader) (Header, error) {
 	return h, nil
 }
 
-// PeekHeader 尝试读取前 HeaderLength 长度的字节并解析成 Header， 不影响原有 reader 的游标
+// PeekHeader reads the header bytes from a byte slice without consuming them
+// and decodes them into a Header struct.
 func PeekHeader(buf []byte) (h Header, err error) {
 	if len(buf) < HeaderLength {
 		return h, ErrIllegalHeaderLength
@@ -83,6 +93,7 @@ func PeekHeader(buf []byte) (h Header, err error) {
 	return h, nil
 }
 
+// ReadHeader reads and decodes a Header from a packet.Reader.
 func ReadHeader(r *packet.Reader) Header {
 	var h Header
 	h.TotalLength = r.ReadUint32()
@@ -91,12 +102,15 @@ func ReadHeader(r *packet.Reader) Header {
 	return h
 }
 
+// WriteHeader encodes and writes a Header to a packet.Writer, including the TotalLength.
 func WriteHeader(h Header, buf *packet.Writer) {
 	buf.WriteUint32(h.TotalLength)
 	buf.WriteUint32(uint32(h.CommandID))
 	buf.WriteUint32(h.SequenceID)
 }
 
+// WriteHeaderNoLength encodes and writes a Header to a packet.Writer, excluding the TotalLength.
+// This is typically used when the total length needs to be calculated and written later.
 func WriteHeaderNoLength(h Header, buf *packet.Writer) {
 	buf.WriteUint32(uint32(h.CommandID))
 	buf.WriteUint32(h.SequenceID)

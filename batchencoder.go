@@ -18,17 +18,22 @@ import (
 type Protocol string
 
 const (
+	// CMPP represents the CMPP protocol.
 	CMPP Protocol = "CMPP"
+	// SMPP represents the SMPP protocol.
 	SMPP Protocol = "SMPP"
+	// SMGP represents the SMGP protocol.
 	SMGP Protocol = "SMGP"
+	// SGIP represents the SGIP protocol.
 	SGIP Protocol = "SGIP"
 )
 
+// String returns the string representation of the Protocol.
 func (p Protocol) String() string {
 	return string(p)
 }
 
-// BatchDataCodingEncoder ...
+// BatchDataCodingEncoder helps to encode content with multiple data codings and select the best one.
 type BatchDataCodingEncoder struct {
 	protocol         Protocol
 	content          string
@@ -37,31 +42,31 @@ type BatchDataCodingEncoder struct {
 	frameKey         byte
 }
 
-// NewBatchDataCodingEncoder ...
+// NewBatchDataCodingEncoder creates a new BatchDataCodingEncoder.
 func NewBatchDataCodingEncoder() *BatchDataCodingEncoder {
 	return new(BatchDataCodingEncoder)
 }
 
-// Protocol sets protocol for a BatchDataCodingEncoder.
+// Protocol sets the protocol for the BatchDataCodingEncoder.
 func (b *BatchDataCodingEncoder) Protocol(p Protocol) *BatchDataCodingEncoder {
 	b.protocol = p
 	return b
 }
 
-// Content sets content and frameKey for a BatchDataCodingEncoder.
+// Content sets the content and frameKey for the BatchDataCodingEncoder.
 func (b *BatchDataCodingEncoder) Content(content string, frameKey byte) *BatchDataCodingEncoder {
 	b.content = content
 	b.frameKey = frameKey
 	return b
 }
 
-// DataCodings sets dataCodings for a BatchDataCodingEncoder.
+// DataCodings sets the data codings to try for the BatchDataCodingEncoder.
 func (b *BatchDataCodingEncoder) DataCodings(d []datacoding.ProtocolDataCoding) *BatchDataCodingEncoder {
 	b.dataCodings = d
 	return b
 }
 
-// OriginDataCoding sets dataCodings for a BatchDataCodingEncoder.
+// OriginDataCoding sets the original data coding for the BatchDataCodingEncoder.
 func (b *BatchDataCodingEncoder) OriginDataCoding(d datacoding.ProtocolDataCoding) *BatchDataCodingEncoder {
 	b.originDataCoding = d
 	return b
@@ -76,16 +81,6 @@ func (b *BatchDataCodingEncoder) allDataCodings() map[datacoding.ProtocolDataCod
 		res[b.originDataCoding] = struct{}{}
 	}
 	return res
-}
-
-func (b *BatchDataCodingEncoder) findOriginEncoder(encoders []*encoder) *encoder {
-	if !datacoding.IsValidProtoDataCoding(b.originDataCoding) {
-		return nil
-	}
-
-	return lo.FindOrElse(encoders, nil, func(item *encoder) bool {
-		return item.msgFmt == b.originDataCoding
-	})
 }
 
 // Build encodes the content according to dataCodings respectively. It returns the one which has the shortest segmented length.

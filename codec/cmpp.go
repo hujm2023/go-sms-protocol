@@ -8,8 +8,11 @@ import (
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 )
 
+// CMPPCodec provides methods for encoding and decoding CMPP PDUs.
+// It handles sticky packets for CMPP protocol.
 type CMPPCodec struct{}
 
+// NewCMPPCodec creates and returns a new CMPPCodec instance.
 func NewCMPPCodec() *CMPPCodec {
 	return new(CMPPCodec)
 }
@@ -47,6 +50,8 @@ func (cc *CMPPCodec) Decode(c ConnReader) ([]byte, error) {
 	return buf, nil
 }
 
+// DecodeBlocked reads a complete CMPP packet from the ConnReader in a blocking manner.
+// It reads the total length first, then reads the remaining bytes.
 func (cc *CMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
 	totalLenBytes := make([]byte, cmpp.PacketTotalLengthBytes)
 	_, err := io.ReadFull(c, totalLenBytes)

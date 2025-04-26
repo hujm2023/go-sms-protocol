@@ -122,12 +122,12 @@ func TestPacketReader(t *testing.T) {
 	})
 
 	t.Run("ReadCString", func(t *testing.T) {
-		b := []byte{
+		bb := []byte{
 			0, 0, 0, 38, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1,
 			104, 56, 54, 103, 55, 118, 0, 53, 55, 57, 48, 50, 52, 0, 67, 77, 84, 0, 52, 0, 0, 0,
 		}
 
-		r := NewPacketReader(b[16:])
+		r := NewPacketReader(bb[16:])
 		defer r.Release()
 
 		t.Log(r.ReadCString())

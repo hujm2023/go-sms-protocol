@@ -6,13 +6,16 @@ import (
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
+// Cancel represents a CMPP 3.0 Cancel PDU.
+// It is used by the SP to request the deletion of a previously submitted short message.
 type Cancel struct {
 	cmpp.Header
 
-	// 8字节，信息标识（SP 想要删除的信息标识）
+	// MsgID is the message identifier of the message to be cancelled (8 bytes).
 	MsgID uint64
 }
 
+// IDecode decodes the byte slice into a Cancel PDU.
 func (c *Cancel) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
@@ -26,6 +29,7 @@ func (c *Cancel) IDecode(data []byte) error {
 	return b.Error()
 }
 
+// IEncode encodes the Cancel PDU into a byte slice.
 func (c *Cancel) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
@@ -35,18 +39,22 @@ func (c *Cancel) IEncode() ([]byte, error) {
 	return b.BytesWithLength()
 }
 
+// SetSequenceID sets the sequence ID of the PDU.
 func (c *Cancel) SetSequenceID(id uint32) {
 	c.Header.SequenceID = id
 }
 
+// GetSequenceID returns the sequence ID of the PDU.
 func (c *Cancel) GetSequenceID() uint32 {
 	return c.Header.SequenceID
 }
 
+// GetCommand returns the command ID of the PDU.
 func (c *Cancel) GetCommand() sms.ICommander {
 	return cmpp.CommandCancel
 }
 
+// GenEmptyResponse generates an empty response PDU for the Cancel.
 func (c *Cancel) GenEmptyResponse() sms.PDU {
 	return &CancelResp{
 		Header: cmpp.Header{
@@ -56,6 +64,7 @@ func (c *Cancel) GenEmptyResponse() sms.PDU {
 	}
 }
 
+// String returns a string representation of the Cancel PDU.
 func (c *Cancel) String() string {
 	w := packet.NewPDUStringer()
 	defer w.Release()
@@ -66,13 +75,16 @@ func (c *Cancel) String() string {
 	return w.String()
 }
 
+// CancelResp represents a CMPP 3.0 CancelResp PDU.
+// It is the response to a Cancel PDU.
 type CancelResp struct {
 	Header cmpp.Header
 
-	// 4 成功标识，0：成功 1：失败
+	// SuccessID indicates the result of the cancel operation (4 bytes): 0 for success, 1 for failure.
 	SuccessID uint32
 }
 
+// IDecode decodes the byte slice into a CancelResp PDU.
 func (c *CancelResp) IDecode(data []byte) error {
 	if len(data) < cmpp.MinCMPPPduLength {
 		return cmpp.ErrInvalidPudLength
@@ -85,6 +97,7 @@ func (c *CancelResp) IDecode(data []byte) error {
 	return b.Error()
 }
 
+// IEncode encodes the CancelResp PDU into a byte slice.
 func (c *CancelResp) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
@@ -94,21 +107,27 @@ func (c *CancelResp) IEncode() ([]byte, error) {
 	return b.BytesWithLength()
 }
 
+// SetSequenceID sets the sequence ID of the PDU.
 func (c *CancelResp) SetSequenceID(id uint32) {
 	c.Header.SequenceID = id
 }
 
+// GetSequenceID returns the sequence ID of the PDU.
 func (c *CancelResp) GetSequenceID() uint32 {
 	return c.Header.SequenceID
 }
 
+// GetCommand returns the command ID of the PDU.
 func (c *CancelResp) GetCommand() sms.ICommander {
 	return cmpp.CommandCancelResp
 }
 
+// GenEmptyResponse generates an empty response PDU (nil for CancelResp).
 func (c *CancelResp) GenEmptyResponse() sms.PDU {
 	return nil
 }
+
+// String returns a string representation of the CancelResp PDU.
 
 func (c *CancelResp) String() string {
 	w := packet.NewPDUStringer()

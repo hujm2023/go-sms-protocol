@@ -5,25 +5,24 @@ import (
 )
 
 /*
-SUBMIT_RESP 和 DELIVERY 中 Msg_Id 生成。组成如下:
-采用 64 位(8 字节)的整数:
-		(1)时间(格式为 MMDDHHMMSS，即 月日时分秒)
-			:bit64~bit39，其中
-				bit64~bit61:月份的二进制表示;
-				bit60~bit56:日的二进制表示;
-				bit55~bit51:小时的二进制表示;
-				bit50~bit45:分的二进制表示;
-				bit44~bit39:秒的二进制表示;
-		(2)短信网关代码:bit38~bit17，把短信网关的代码转换为整数填写到该字段中。
-		(3)序列号:bit16~bit1，顺序增加，步长为 1，循环使用。
+MsgID generation for SUBMIT_RESP and DELIVER.
+Structure (64-bit integer):
+(1) Time (MMDDHHMMSS format): bits 64-39
+    - bits 64-61: Month (binary)
+    - bits 60-56: Day (binary)
+    - bits 55-51: Hour (binary)
+    - bits 50-45: Minute (binary)
+    - bits 44-39: Second (binary)
+(2) SMS Gateway Code: bits 38-17 (integer representation of the gateway code)
+(3) Sequence Number: bits 16-1 (sequentially increasing, wraps around)
 
-各部分如不能填满，左补零，右对齐。
-(SP 根据请求和应答消息的 Sequence_Id 一致性就可得到 CMPP_Submit 消息的 Msg_Id)
+Left-pad with zeros if necessary, right-aligned.
+(SP can get the MsgID of CMPP_Submit message from the consistency of Sequence_Id in request and response messages)
 */
 
 const msgIDFormat = "%02d%02d%02d%02d%02d%07d%05d"
 
-// CombineMsgID 生成Msg_Id
+// CombineMsgID generates a 64-bit MsgID based on the provided time components, gateway ID, and sequence ID.
 func CombineMsgID(month, day, hour, minute, second, gateID, sequenceID uint64) uint64 {
 	var msgID uint64
 	msgID = month
@@ -36,7 +35,7 @@ func CombineMsgID(month, day, hour, minute, second, gateID, sequenceID uint64) u
 	return msgID
 }
 
-// SplitMsgID 从Msg_Id中解析出发送信息
+// SplitMsgID extracts the time components, gateway ID, and sequence ID from a 64-bit MsgID.
 func SplitMsgID(msgID uint64) (month, day, hour, minute, second, gateID, sequenceID uint64) {
 	month = msgID >> 60 & 0xf
 	day = msgID >> 55 & 0x1f
@@ -48,7 +47,7 @@ func SplitMsgID(msgID uint64) (month, day, hour, minute, second, gateID, sequenc
 	return
 }
 
-// MsgID2String 将Msg_Id转为年月日表示法
+// MsgID2String converts a 64-bit MsgID to its string representation (MMDDHHMMSSGGGGGQQQQQ).
 func MsgID2String(u uint64) string {
 	if u == 0 {
 		return ""
@@ -57,7 +56,7 @@ func MsgID2String(u uint64) string {
 	return fmt.Sprintf(msgIDFormat, month, day, hour, minute, second, gateID, sequenceID)
 }
 
-// MsgIDString2Uint64 ...
+// MsgIDString2Uint64 converts a MsgID string representation (MMDDHHMMSSGGGGGQQQQQ) back to its 64-bit integer form.
 func MsgIDString2Uint64(s string) uint64 {
 	var month, day, hour, minute, second, gateID, sequenceID uint64
 	_, err := fmt.Sscanf(s, msgIDFormat, &month, &day, &hour, &minute, &second, &gateID, &sequenceID)

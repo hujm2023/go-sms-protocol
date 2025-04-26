@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
+// ConnectTSFormat defines the timestamp format (MMDDHHMMSS) used in CMPP Connect PDU.
 const ConnectTSFormat = "0102150405"
 
-// Now ...
-func Now() time.Time {
-	return time.Now()
-}
+// Now returns the current time. It's a variable for easy mocking in tests.
+var Now = time.Now
 
-// GenConnectTimestamp ...
+// GenConnectTimestamp generates the timestamp string and uint32 value for CMPP Connect PDU.
+// It uses the format defined by ConnectTSFormat.
 func GenConnectTimestamp(nowFunc func() time.Time) (string, uint32) {
 	if nowFunc == nil {
 		nowFunc = Now
@@ -25,13 +25,14 @@ func GenConnectTimestamp(nowFunc func() time.Time) (string, uint32) {
 	return TimeStamp2Str(s), s
 }
 
-// TimeStamp2Str converts a timestamp(MMDDHHMMSS) int to a string(10 bytes).
-// Right aligned, fill 0 if shorter than 10.
+// TimeStamp2Str converts a timestamp (MMDDHHMMSS format uint32) to a 10-byte string.
+// It pads with leading zeros if necessary.
 func TimeStamp2Str(t uint32) string {
 	return fmt.Sprintf("%010d", t)
 }
 
-// GenConnectAuth is used to generate the AuthenticatorSource field in the CMPP CONNECT PDU.
+// GenConnectAuth generates the AuthenticatorSource field for the CMPP CONNECT PDU.
+// It calculates the MD5 hash of (SourceAddr + 9 bytes of zeros + password + Timestamp).
 func GenConnectAuth(account string, password string, timestampStr string) []byte {
 	md5Bytes := md5.Sum(
 		bytes.Join([][]byte{
@@ -45,7 +46,8 @@ func GenConnectAuth(account string, password string, timestampStr string) []byte
 	return md5Bytes[:]
 }
 
-// GenConnectRespAuthISMG ...
+// GenConnectRespAuthISMG generates the AuthenticatorISMG field for the CMPP CONNECT_RESP PDU.
+// It calculates the MD5 hash of (Status + AuthenticatorSource + password).
 func GenConnectRespAuthISMG(statusBytes []byte, reqAuth string, password string) []byte {
 	m := md5.Sum(bytes.Join([][]byte{
 		statusBytes,
