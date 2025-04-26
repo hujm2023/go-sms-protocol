@@ -103,6 +103,7 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 	server := &BaseServer[T]{
 		network: network,
 		address: address,
+		logger:  hlog.DefaultLogger(),
 	}
 	for _, opt := range opts {
 		opt(server)
@@ -121,7 +122,14 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 		server.OnCloseConn(ctx, conn)
 	}
 	dispatch := func(ctx context.Context, conn netpoll.Connection) error {
-		return server.DispatchRequest(ctx, conn)
+		err := server.DispatchRequest(ctx, conn)
+		if err != nil {
+			// For netpoll, the error returned here will be ignored.
+			// If the connection is not closed here, OnRequest will be continuously triggered, resulting in an infinite loop
+			server.logger.CtxErrorf(ctx, "dispatch request error: %v", err)
+			_ = conn.Close()
+		}
+		return err
 	}
 
 	nOpts := []netpoll.Option{
@@ -149,9 +157,6 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 			1024,
 			gopool.NewConfig(),
 		)
-	}
-	if server.logger == nil {
-		server.logger = hlog.DefaultLogger()
 	}
 
 	return server, nil
@@ -219,7 +224,7 @@ func (s *BaseServer[T]) DispatchRequest(ctx context.Context, conn netpoll.Connec
 		respData, err := s.handle(ctx, rPDU)
 		// 有数据要返回，先写，再判断是否要关闭
 		if len(respData) > 0 {
-			s.logger.CtxDebugf(ctx, " == write data: %+v", respData)
+			// s.logger.CtxDebugf(ctx, " == write data: %+v", respData)
 			mc.AsyncWrite(ctx, respData)
 		}
 
