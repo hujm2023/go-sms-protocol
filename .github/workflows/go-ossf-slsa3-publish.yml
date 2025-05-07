@@ -17,28 +17,34 @@ jobs:
         run: go get .
       - name: Build
         run: go build -v ./...
+
       - name: Run Test
         run: |
           go test -v ./... -covermode=count -coverprofile=coverage.out
           go tool cover -func=coverage.out -o=coverage.out
+
       - name: Go Coverage Badge # Pass the `coverage.out` output to this action
         uses: tj-actions/coverage-badge-go@v2
         with:
           filename: coverage.out
 
-      - name: Update README coverage badge
-        run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
-          sed -i.bak -E "s/coverage-[0-9]+\.[0-9]+%25-brightgreen/coverage-${COVERAGE}%25-brightgreen/g" README.md
-          rm -f README.md.bak
-
-      - name: Commit and push if README.md changed
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: update coverage badge in README.md"
-          file_pattern: README.md
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v16
         id: verify-changed-files
         with:
           files: README.md
+
+      - name: Commit changes
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "chore: Updated coverage badge."
+
+      - name: Push changes
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ github.token }}
+          branch: ${{ github.head_ref }}
