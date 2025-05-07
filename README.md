@@ -1,5 +1,3 @@
-<!-- @format -->
-
 # go-sms-protocol
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/hujm2023/go-sms-protocol.svg)](https://pkg.go.dev/github.com/hujm2023/go-sms-protocol)
