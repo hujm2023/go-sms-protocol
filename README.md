@@ -1,14 +1,13 @@
 <!-- @format -->
-![Coverage](https://img.shields.io/badge/Coverage-49.7%25-yellow)
 
 # go-sms-protocol
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/hujm2023/go-sms-protocol.svg)](https://pkg.go.dev/github.com/hujm2023/go-sms-protocol)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hujm2023/go-sms-protocol)](https://goreportcard.com/report/github.com/hujm2023/go-sms-protocol)
-[![Coverage Status](https://coveralls.io/repos/github/hujm2023/go-sms-protocol/badge.svg?branch=main)](https://coveralls.io/github/hujm2023/go-sms-protocol?branch=main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Coverage](https://img.shields.io/badge/Coverage-49.7%25-yellow)
 
-本项目是用 Go 语言实现的短信标准协议集合，支持主流的运营商短信网关协议，包括 SMPP、CMPP、SGIP、SMGP 等，适用于短信网关、SP、ISMG 等场景。
+本项目是用 Go 语言实现的短信标准协议集合，支持主流的运营商短信网关协议，包括 SMPP、CMPP、SGIP、SMGP 等，适用于短信网关、SP、ISMG 等场景。项目结构清晰，易于扩展和维护，适合企业级短信平台、聚合网关、协议适配器等多种场景。
 
 ---
 
@@ -62,12 +61,9 @@ cd go-sms-protocol
 ### 2. 基础功能
 
 - 最优编码选择
-
-- 2.2 长短信拼接
-
-- 2.3 长短信拆分
-
-- 2.4 各协议编解码支持
+- 长短信拼接
+- 长短信拆分
+- 各协议编解码支持
 
 详细用法请参考各协议目录下的测试用例。
 
@@ -87,6 +83,28 @@ cd go-sms-protocol
 ## 📚 参考文档
 
 - 项目根目录 doc/ 下包含各协议官方标准 PDF，可供详细查阅
+
+## 🏗️ 可扩展性与架构设计
+
+本项目高度重视可扩展性与模块解耦，便于二次开发和协议适配：
+
+- **协议适配层**：各主流短信协议（SMPP、CMPP、SGIP、SMGP）均采用独立目录和模块实现，遵循统一接口规范，便于新增或替换协议实现。
+- **插件化机制**：核心功能与协议实现解耦，支持通过接口扩展自定义消息处理、编码格式、链路管理等，满足多样化业务需求。
+- **灵活的消息编解码**：`codec/` 和 `datacoding/` 目录下实现了通用的消息编解码框架，支持多种编码格式（如 GSM7、UCS2、GB18030 等），可按需扩展。
+- **高性能网络服务端**：`nioserver/` 提供基于事件驱动的高性能网络服务端组件，支持大规模并发连接，适合服务网关和运营级应用。
+- **模块解耦与可测试性**：各协议、工具、网络层均为独立包，便于单元测试和功能扩展，提升代码可维护性。
+- **易于集成与定制**：通过接口和配置，开发者可快速集成本库至自有系统，或根据业务场景定制协议细节和消息处理逻辑。
+
+该架构设计确保了项目的灵活性、可维护性和易用性，适合企业级短信平台、聚合网关、协议适配器等多种场景。
+
+### 📖 扩展指南
+
+- **添加新协议**：实现 protocol.PDU 接口以适配新协议消息类型；如需特殊的数据包长度判定，可实现对应的 codec.Codec；并新增协议专属的解码分发器（如 DecodeCMPP30）。
+- **添加新 PDU**：在对应协议/版本包下定义新的 PDU 结构体，实现 protocol.PDU 接口，并在协议的解码分发函数中注册。
+- **添加新编码方式**：实现 datacoding.Codec 接口，并根据需要在 codec_cmpp.go、codec_smpp.go 等协议包装器中注册。
+- **自定义服务端行为**：通过 nioserver.BaseServer 的 ServerOption 选项自定义日志、工作池、连接生命周期回调（如 OnCloseFunc、WithRefreshCtxWhenRead）；可用 ISMSConn.SetBizData 为连接附加自定义业务数据。
+
+上述机制可帮助开发者灵活扩展协议、消息类型和编码方式，并根据业务需求定制服务端行为。
 
 ## 📬 联系方式
 
