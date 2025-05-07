@@ -45,7 +45,6 @@
 - 依赖详见 go.mod
 
 ```shell
-# 推荐使用 go get 方式集成
  go get github.com/hujm2023/go-sms-protocol
 ```
 
