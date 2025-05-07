@@ -218,8 +218,8 @@ const (
 	ESM_CLASS_MSGMODE_STOREFORWARD = 0x03 // Store and Forward mode (use this to select Store and Forward mode if Default mode is not Store and Forward)
 
 	ESM_CLASS_MSGTYPE_DEFAULT     = 0x00 // Default message type (i.e. normal message)
-	ESM_CLASS_MSGTYPE_DELIVERYACK = 0x08 // Message containts ESME CMPPDelivery Acknowledgement
-	ESM_CLASS_MSGTYPE_USERACK     = 0x10 // Message containts ESME Manual/User Acknowledgement
+	ESM_CLASS_MSGTYPE_DELIVERYACK = 0x08 // Message contains ESME CMPPDelivery Acknowledgement
+	ESM_CLASS_MSGTYPE_USERACK     = 0x10 // Message contains ESME Manual/User Acknowledgement
 
 	ESM_CLASS_GSMFEAT_NONE          = 0x00 // No specific features selected
 	ESM_CLASS_GSMFEAT_UDHI          = 0x40 // UDHI Indicator (only relevant for MT msgs)
