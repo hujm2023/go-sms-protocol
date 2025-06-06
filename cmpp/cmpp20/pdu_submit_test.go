@@ -49,7 +49,7 @@ func TestPduSubmit(t *testing.T) {
 	assert.Equal(t, int(1), len(s.DestTerminalID))
 	assert.Equal(t, "13500002696", s.DestTerminalID[0])
 	assert.Equal(t, uint8(17), s.MsgLength)
-	assert.Equal(t, "go submit content", s.MsgContent)
+	assert.Equal(t, []byte("go submit content"), s.MsgContent)
 	assert.Equal(t, "", s.Reserve)
 
 	encoded, err := s.IEncode()

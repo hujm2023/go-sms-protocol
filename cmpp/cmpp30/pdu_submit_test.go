@@ -27,7 +27,7 @@ var (
 	destUsrTl          uint8    = 1
 	destTerminalId     []string = []string{"13500002696"}
 	destTerminalType   uint8    = 0
-	msgContent                  = "go submit"
+	msgContent                  = []byte("go submit")
 	msgLength          uint8    = uint8(len(msgContent))
 )
 

@@ -78,7 +78,7 @@ type PduSubmit struct {
 	MsgLength uint8
 
 	// MsgContent is the message content (MsgLength bytes).
-	MsgContent string
+	MsgContent []byte
 
 	// Reserve is a reserved field (8 bytes).
 	Reserve string
@@ -112,7 +112,7 @@ func (p *PduSubmit) IEncode() ([]byte, error) {
 		b.WriteFixedLenString(dest, 21)
 	}
 	b.WriteUint8(p.MsgLength)
-	b.WriteString(p.MsgContent)
+	b.WriteBytes(p.MsgContent)
 	b.WriteFixedLenString(p.Reserve, 8)
 
 	return b.BytesWithLength()
@@ -150,7 +150,7 @@ func (p *PduSubmit) IDecode(data []byte) error {
 		p.DestTerminalID[i] = b.ReadCStringN(21)
 	}
 	p.MsgLength = b.ReadUint8()
-	p.MsgContent = string(b.ReadNBytes(int(p.MsgLength)))
+	p.MsgContent = b.ReadNBytes(int(p.MsgLength))
 	p.Reserve = b.ReadCStringN(8)
 
 	return b.Error()
