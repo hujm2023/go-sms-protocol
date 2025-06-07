@@ -15,7 +15,6 @@ func TestTryReadHeader(t *testing.T) {
 			CommandID:   CommandConnect,
 			SequenceID:  123,
 		}
-		// fmt.Println(h)
 		h1, err := PeekHeader(h.Bytes())
 		assert.Nil(t, err)
 		reflect.DeepEqual(h1, h)

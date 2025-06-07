@@ -75,7 +75,6 @@ func (c CommandID) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaler interface for CommandID.
 func (c *CommandID) UnmarshalJSON(b []byte) error {
-	fmt.Println(string(b))
 	switch string(b) {
 	case `"CMPP_CONNECT"`:
 		*c = CommandConnect

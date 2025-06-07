@@ -2,7 +2,6 @@ package sgip12
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -139,5 +138,5 @@ func TestSubmit_1(t *testing.T) {
 	// 实现接口级别的单测
 	a := new(Submit)
 	assert.Nil(t, a.IDecode(raw))
-	fmt.Println(a.MessageContent)
+	t.Log(a.MessageContent)
 }
