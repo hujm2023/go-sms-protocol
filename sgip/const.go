@@ -9,8 +9,6 @@ import (
 type RespStatus uint8
 
 const (
-	SGIP_VERSION = 0x12
-
 	// 系统中每个消息包最大不超过2K字节
 	MAX_OP_SIZE = 2048
 

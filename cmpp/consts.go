@@ -9,21 +9,6 @@ const (
 	MinCMPPPduLength = HeaderLength // cmpp PduCMPP 最小的长度
 )
 
-// Version represents the CMPP protocol version.
-type Version uint8
-
-// String returns the string representation of the CMPP version.
-func (v Version) String() string {
-	switch v {
-	case Version20:
-		return "CMPP V2.0"
-	case Version30:
-		return "CMPP V3.0"
-	default:
-		return "Unknown"
-	}
-}
-
 const (
 	// VersionUnknown represents an unknown CMPP version.
 	VersionUnknown = 0

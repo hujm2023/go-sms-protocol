@@ -103,7 +103,7 @@ type PduConnectResp struct {
 	cmpp.Header
 
 	// Status indicates the connection status (1 byte): 0=success, 1=invalid structure, 2=invalid source address, 3=auth error, 4=version too high, >5=other error.
-	Status uint8
+	Status ConnectRespStatus
 
 	// AuthenticatorISMG is the ISMG authenticator code (16 bytes, MD5(Status + req.AuthenticatorSource + password)).
 	AuthenticatorISMG string
@@ -118,7 +118,7 @@ func (pr *PduConnectResp) IEncode() ([]byte, error) {
 	defer buf.Release()
 
 	cmpp.WriteHeaderNoLength(pr.Header, buf)
-	buf.WriteUint8(pr.Status)
+	buf.WriteUint8(uint8(pr.Status))
 	buf.WriteFixedLenString(pr.AuthenticatorISMG, 16)
 	buf.WriteUint8(pr.Version)
 
@@ -133,7 +133,7 @@ func (pr *PduConnectResp) IDecode(data []byte) error {
 
 	buf := packet.NewPacketReader(data)
 	pr.Header = cmpp.ReadHeader(buf)
-	pr.Status = buf.ReadUint8()
+	pr.Status = ConnectRespStatus(buf.ReadUint8())
 	pr.AuthenticatorISMG = buf.ReadCStringN(16)
 	pr.Version = buf.ReadUint8()
 
@@ -171,4 +171,51 @@ func (p *PduConnectResp) String() string {
 	w.Write("Version", p.Version)
 
 	return w.String()
+}
+
+// --- connect resp status ----
+
+type ConnectRespStatus uint8
+
+// Status indicates the connection status (1 byte): 0=success, 1=invalid structure, 2=invalid source address, 3=auth error, 4=version too high, >5=other error.
+const (
+	// 0 success
+	ConnectRespStatusSuccess ConnectRespStatus = iota
+	// 1 invalid structure
+	ConnectRespStatusInvalidStructure
+	// 2 invalid source address, that is, this account does not exist
+	ConnectRespStatusInvalidSourceAddress
+	// 3 auth error, that is, the password is incorrect
+	ConnectRespStatusAuthError
+	// 4 version too high
+	ConnectRespStatusVersionTooHigh
+	// 5 too many connections
+	ConnectRespStatusTooConns
+	// 6 use ip address not in white list
+	ConnectRespStatusIpBlock
+	// 7 system error
+	ConnectRespStatusSystemError
+)
+
+func (s ConnectRespStatus) String() string {
+	switch s {
+	case ConnectRespStatusSuccess:
+		return "0:Success"
+	case ConnectRespStatusInvalidStructure:
+		return "1:InvalidStructure"
+	case ConnectRespStatusInvalidSourceAddress:
+		return "2:InvalidSourceAddress"
+	case ConnectRespStatusAuthError:
+		return "3:AuthError"
+	case ConnectRespStatusVersionTooHigh:
+		return "4:VersionTooHigh"
+	case ConnectRespStatusTooConns:
+		return "5:TooManyConnections"
+	case ConnectRespStatusIpBlock:
+		return "6:IPBlocked"
+	case ConnectRespStatusSystemError:
+		return "7:SystemError"
+	default:
+		return "8:UnknownStatus"
+	}
 }

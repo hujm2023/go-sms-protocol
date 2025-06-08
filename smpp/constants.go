@@ -7,9 +7,6 @@ import (
 var ErrInvalidPudLength = errors.New("invalid pdu length")
 
 const (
-	// SMPP Protocol Version
-	SMPP_VERSION = 0x34
-
 	// Max PDU size to minimize some attack vectors
 	MAX_PDU_SIZE = 4096 // 4KB
 
@@ -138,7 +135,7 @@ const (
 )
 
 const (
-	// TLV Fields 只用来标识上游sender2的字段，不会用于协议相关的数据处理
+	// TLV Fields 只用来标识上游透传的字段，不会用于协议相关的数据处理
 	TLV_PE_ID       = "tlv:pe_id"
 	TLV_TEMPLATE_ID = "tlv:template_id"
 )

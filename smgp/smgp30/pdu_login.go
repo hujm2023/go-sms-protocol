@@ -94,7 +94,7 @@ type LoginResp struct {
 	smgp.Header
 
 	// 4 字节，状态：0正确 1消息结构错 2非法源地址 3认证错 4版本太高 >5其他错误
-	Status uint32
+	Status LoginRespStatus
 
 	// 16 字节
 	AuthenticatorServer string
@@ -111,7 +111,7 @@ func (c *LoginResp) IDecode(data []byte) error {
 	defer buf.Release()
 
 	c.Header = smgp.ReadHeader(buf)
-	c.Status = buf.ReadUint32()
+	c.Status = LoginRespStatus(buf.ReadUint32())
 	c.AuthenticatorServer = buf.ReadCStringN(16)
 	c.ServerVersion = buf.ReadUint8()
 	return buf.Error()
@@ -122,7 +122,7 @@ func (c *LoginResp) IEncode() ([]byte, error) {
 	defer buf.Release()
 
 	smgp.WriteHeaderNoLength(c.Header, buf)
-	buf.WriteUint32(c.Status)
+	buf.WriteUint32(uint32(c.Status))
 	buf.WriteFixedLenString(c.AuthenticatorServer, 16)
 	buf.WriteUint8(c.ServerVersion)
 
@@ -155,4 +155,36 @@ func (l *LoginResp) String() string {
 	w.Write("ServerVersion", l.ServerVersion)
 
 	return w.String()
+}
+
+// ------
+
+type LoginRespStatus uint32
+
+const (
+	LoginRespStatusSuccess LoginRespStatus = iota
+	LoginRespStatusMsgStructErr
+	LoginRespStatusInvalidSourceAddr
+	LoginRespStatusAuthErr
+	LoginRespStatusVersionTooHigh
+	LoginRespStatusOtherErr
+)
+
+func (l LoginRespStatus) String() string {
+	switch l {
+	case LoginRespStatusSuccess:
+		return "Success"
+	case LoginRespStatusMsgStructErr:
+		return "MsgStructErr"
+	case LoginRespStatusInvalidSourceAddr:
+		return "InvalidSourceAddr"
+	case LoginRespStatusAuthErr:
+		return "AuthErr"
+	case LoginRespStatusVersionTooHigh:
+		return "VersionTooHigh"
+	case LoginRespStatusOtherErr:
+		return "OtherErr"
+	default:
+		return "Unknown"
+	}
 }
