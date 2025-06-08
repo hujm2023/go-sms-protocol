@@ -32,3 +32,17 @@ func TestPduConnect(t *testing.T) {
 
 	t.Log(c.String())
 }
+
+func TestPduConnectResp(t *testing.T) {
+	data := []byte{0, 0, 0, 30, 128, 0, 0, 1, 0, 0, 0, 38, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	c := new(PduConnectResp)
+	assert.Nil(t, c.IDecode(data))
+	assert.Equal(t, uint32(30), c.TotalLength)
+	assert.Equal(t, cmpp.CommandConnectResp, c.CommandID)
+	assert.Equal(t, uint32(38), c.SequenceID)
+	assert.Equal(t, ConnectRespStatus(0), c.Status)
+	assert.Equal(t, ConnectRespStatusSuccess.String(), c.Status.String())
+	assert.Equal(t, "", c.AuthenticatorISMG)
+	assert.Equal(t, uint8(0), c.Version)
+	t.Log(c.String())
+}

@@ -85,10 +85,11 @@ func (s *LoginRespTestSuite) TestLoginResp_IDecode() {
 
 	s.Equal(smgp.CommandLoginResp, c.Header.CommandID)
 	s.Equal(uint32(0x1), c.Header.SequenceID)
-	s.Equal(uint32(0), c.Status)
+	s.Equal(LoginRespStatusSuccess, c.Status)
+	s.Equal(LoginRespStatusSuccess.String(), c.Status.String())
 	s.Equal(uint8(0x30), c.ServerVersion)
-
 	s.Equal("AuthServer", c.AuthenticatorServer)
+	s.T().Log(c.String())
 }
 
 func TestLoginResp(t *testing.T) {
