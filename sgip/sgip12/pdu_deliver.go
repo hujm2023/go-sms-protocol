@@ -31,7 +31,7 @@ type Deliver struct {
 	MessageLength uint32
 
 	// MessageLength 字节 短消息的内容
-	MessageContent string
+	MessageContent []byte
 
 	// 8 字节 保留，扩展用
 	Reserved string
@@ -47,7 +47,7 @@ func (p *Deliver) IEncode() ([]byte, error) {
 	b.WriteUint8(p.TpUdhi)
 	b.WriteUint8(p.MessageCoding)
 	b.WriteUint32(p.MessageLength)
-	b.WriteFixedLenString(p.MessageContent, int(p.MessageLength))
+	b.WriteBytes(p.MessageContent)
 	b.WriteFixedLenString(p.Reserved, 8)
 
 	return b.BytesWithLength()
@@ -66,7 +66,7 @@ func (p *Deliver) IDecode(data []byte) error {
 	p.TpUdhi = b.ReadUint8()
 	p.MessageCoding = b.ReadUint8()
 	p.MessageLength = b.ReadUint32()
-	p.MessageContent = string(b.ReadNBytes(int(p.MessageLength)))
+	p.MessageContent = b.ReadNBytes(int(p.MessageLength))
 	p.Reserved = b.ReadCStringN(8)
 	return b.Error()
 }

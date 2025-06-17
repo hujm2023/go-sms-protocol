@@ -36,7 +36,7 @@ func (s *DeliverTestSuite) TestDeliver_IEncode() {
 		MsgFormat:  smgp.GB18030,
 		SrcTermID:  "1069000000",
 		MsgLength:  uint8(len([]byte("hello test msg"))),
-		MsgContent: "hello test msg",
+		MsgContent: []byte("hello test msg"),
 		RecvTime:   "",
 		IsReport:   smgp.IS_REPORT,
 	}
@@ -57,7 +57,7 @@ func (s *DeliverTestSuite) TestDeliver_IDecode() {
 	s.Equal(uint8(smgp.GB18030), deliver.MsgFormat)
 	s.Equal("1069000000", deliver.SrcTermID)
 	s.Equal(uint8(len([]byte("hello test msg"))), deliver.MsgLength)
-	s.Equal("hello test msg", deliver.MsgContent)
+	s.Equal([]byte("hello test msg"), deliver.MsgContent)
 }
 
 func TestDeliver(t *testing.T) {

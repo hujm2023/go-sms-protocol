@@ -18,4 +18,8 @@ func TestPduTerminate(t *testing.T) {
 	assert.Equal(t, uint32(0x0c), tt.TotalLength)
 	assert.Equal(t, cmpp.CommandTerminate, tt.CommandID)
 	assert.Equal(t, uint32(0x17), tt.SequenceID)
+
+	data, err := tt.IEncode()
+	assert.Nil(t, err)
+	assert.Equal(t, dataExpected, data)
 }
