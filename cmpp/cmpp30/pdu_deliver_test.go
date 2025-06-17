@@ -57,7 +57,7 @@ func (s *DeliverTestSuite) TestDeliver_IEncode() {
 		SrcTerminalType:   0,
 		RegisteredDeliver: s.registerDelivery,
 		MsgLength:         s.msgLength,
-		MsgContent:        s.msgContent,
+		MsgContent:        []byte(s.msgContent),
 	}
 
 	data, err := d.IEncode()
@@ -77,7 +77,7 @@ func (s *DeliverTestSuite) TestDeliver_IDecode() {
 	s.Equal(s.srcTerminalID, deliver.SrcTerminalID)
 	s.Equal(s.registerDelivery, deliver.RegisteredDeliver)
 	s.Equal(s.msgLength, deliver.MsgLength)
-	s.Equal(s.msgContent, deliver.MsgContent)
+	s.Equal([]byte(s.msgContent), deliver.MsgContent)
 }
 
 func (s *DeliverTestSuite) TestDeliver_SetSequenceID() {
@@ -109,6 +109,13 @@ func (s *DeliverTestSuite) TestDeliver_GenEmptyResponse() {
 	resp := d.GenEmptyResponse()
 	s.Equal(cmpp.CommandDeliverResp, resp.GetCommand())
 	s.Equal(uint32(0x01), resp.GetSequenceID())
+}
+
+func (s *DeliverTestSuite) TestDeliver_String() {
+	d := new(Deliver)
+	s.Nil(d.IDecode(s.valueBytes))
+
+	s.T().Log(d.String())
 }
 
 func TestDeliver(t *testing.T) {

@@ -54,7 +54,7 @@ type Deliver struct {
 	MsgLength uint8
 
 	// MsgContent is the message content (MsgLength bytes).
-	MsgContent string
+	MsgContent []byte
 
 	// LinkID is used for on-demand services (20 bytes). Not used in non-on-demand MT processes.
 	LinkID string
@@ -80,7 +80,7 @@ func (d *Deliver) IDecode(data []byte) error {
 	d.SrcTerminalType = b.ReadUint8()
 	d.RegisteredDeliver = b.ReadUint8()
 	d.MsgLength = b.ReadUint8()
-	d.MsgContent = string(b.ReadNBytes(int(d.MsgLength)))
+	d.MsgContent = b.ReadNBytes(int(d.MsgLength))
 	d.LinkID = b.ReadCStringN(20)
 
 	return b.Error()
@@ -102,7 +102,7 @@ func (d *Deliver) IEncode() ([]byte, error) {
 	b.WriteUint8(d.SrcTerminalType)
 	b.WriteUint8(d.RegisteredDeliver)
 	b.WriteUint8(d.MsgLength)
-	b.WriteFixedLenString(d.MsgContent, int(d.MsgLength))
+	b.WriteBytes(d.MsgContent)
 	b.WriteFixedLenString(d.LinkID, 20)
 
 	return b.BytesWithLength()

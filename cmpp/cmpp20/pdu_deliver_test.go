@@ -32,7 +32,7 @@ func TestPduDelivery(t *testing.T) {
 	assert.Equal(t, "13412340000", d.SrcTerminalID)
 	assert.Equal(t, uint8(0), d.RegisteredDeliver)
 	assert.Equal(t, uint8(18), d.MsgLength)
-	assert.Equal(t, "This is a test MO.", d.MsgContent)
+	assert.Equal(t, "This is a test MO.", string(d.MsgContent))
 
 	encoded, err := d.IEncode()
 	assert.Nil(t, err)
@@ -45,6 +45,6 @@ func TestDelivery(t *testing.T) {
 	b := []byte{0, 0, 0, 145, 0, 0, 0, 5, 0, 0, 0, 0, 174, 92, 107, 192, 0, 11, 0, 1, 49, 48, 54, 57, 48, 53, 52, 57, 50, 50, 50, 50, 50, 51, 0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49, 56, 48, 50, 54, 57, 48, 49, 48, 50, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 60, 174, 92, 107, 192, 0, 11, 0, 1, 68, 69, 76, 73, 86, 82, 68, 50, 50, 49, 48, 50, 56, 50, 51, 48, 54, 50, 50, 49, 48, 50, 56, 50, 51, 48, 54, 49, 56, 48, 50, 54, 57, 48, 49, 48, 50, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0}
 	d := new(PduDeliver)
 	t.Log(d.IDecode(b))
-	t.Log([]byte(d.MsgContent))
+	t.Log(d.MsgContent)
 	t.Log(d.String())
 }

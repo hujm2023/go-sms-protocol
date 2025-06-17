@@ -46,7 +46,7 @@ type Deliver struct {
 	MsgLength uint8
 
 	// 短消息内容
-	MsgContent string
+	MsgContent []byte
 
 	// 保留
 	Reserve string
@@ -70,7 +70,7 @@ func (d *Deliver) IDecode(data []byte) error {
 	d.SrcTermID = b.ReadCStringN(21)
 	d.DestTermID = b.ReadCStringN(21)
 	d.MsgLength = b.ReadUint8()
-	d.MsgContent = string(b.ReadNBytes(int(d.MsgLength)))
+	d.MsgContent = b.ReadNBytes(int(d.MsgLength))
 	d.Reserve = b.ReadCStringN(8)
 	d.Options = smgp.ReadOptions(b)
 
@@ -89,7 +89,7 @@ func (d *Deliver) IEncode() ([]byte, error) {
 	b.WriteFixedLenString(d.SrcTermID, 21)
 	b.WriteFixedLenString(d.DestTermID, 21)
 	b.WriteUint8(d.MsgLength)
-	b.WriteFixedLenString(d.MsgContent, int(d.MsgLength))
+	b.WriteBytes(d.MsgContent)
 	b.WriteFixedLenString(d.Reserve, 8)
 	b.WriteBytes(d.Options.Serialize())
 

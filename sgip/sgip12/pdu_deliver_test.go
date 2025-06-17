@@ -40,7 +40,7 @@ func TestDeliver(t *testing.T) {
 		TpUdhi:         0,
 		MessageCoding:  0,
 		MessageLength:  22,
-		MessageContent: "hello deliver test msg",
+		MessageContent: []byte("hello deliver test msg"),
 		Reserved:       "",
 	}
 
@@ -48,7 +48,6 @@ func TestDeliver(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, bytes.EqualFold(raw, value))
 	assert.Equal(t, sgip.SGIP_DELIVER, deliver.GetCommand())
-	DecodeSGIP12(value)
 
 	deliverResp := deliver.GenEmptyResponse()
 	assert.Nil(t, deliverResp.GenEmptyResponse())
@@ -82,7 +81,6 @@ func TestDeliverResp(t *testing.T) {
 		Result:   sgip.STAT_OK,
 		Reserved: "",
 	}
-	DecodeSGIP12(raw)
 
 	value, err := response.IEncode()
 	assert.Nil(t, err)

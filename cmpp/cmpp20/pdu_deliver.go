@@ -51,7 +51,7 @@ type PduDeliver struct {
 	MsgLength uint8
 
 	// MsgContent is the message content (MsgLength bytes).
-	MsgContent string
+	MsgContent []byte
 
 	// Reserved is a reserved field (8 bytes).
 	Reserved string
@@ -72,7 +72,7 @@ func (p *PduDeliver) IEncode() ([]byte, error) {
 	b.WriteFixedLenString(p.SrcTerminalID, 21)
 	b.WriteUint8(p.RegisteredDeliver)
 	b.WriteUint8(p.MsgLength)
-	b.WriteString(p.MsgContent)
+	b.WriteBytes(p.MsgContent)
 	b.WriteFixedLenString(p.Reserved, 8)
 
 	return b.BytesWithLength()
@@ -97,7 +97,7 @@ func (p *PduDeliver) IDecode(data []byte) error {
 	p.SrcTerminalID = b.ReadCStringN(21)
 	p.RegisteredDeliver = b.ReadUint8()
 	p.MsgLength = b.ReadUint8()
-	p.MsgContent = string(b.ReadNBytes(int(p.MsgLength)))
+	p.MsgContent = b.ReadNBytes(int(p.MsgLength))
 	p.Reserved = b.ReadCStringN(8)
 
 	return b.Error()
