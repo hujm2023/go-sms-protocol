@@ -76,7 +76,7 @@ func (s *ContentTestSuite) TestDecodeSGIPContentSimple() {
 
 // TestDecodeSGIPContent tests the DecodeSGIPContent function.
 func (s *ContentTestSuite) TestDecodeSGIPContent() {
-	content, err := DecodeSGIPContent(context.Background(), int(datacoding.CMPP_CODING_GBK), string([]byte{0x05, 0x00, 0x03, 0x01, 0x02, 0x01})+string([]byte{0xc4, 0xe3, 0xba, 0xc3}))
+	content, err := DecodeSMGPContentSimplt(context.Background(), int(datacoding.CMPP_CODING_GBK), string([]byte{0x05, 0x00, 0x03, 0x01, 0x02, 0x01})+string([]byte{0xc4, 0xe3, 0xba, 0xc3}))
 	s.NoError(err)
 	s.Equal("你好", content)
 }

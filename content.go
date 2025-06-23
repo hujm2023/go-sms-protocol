@@ -19,7 +19,7 @@ func DecodeSGIPContentSimple(ctx context.Context, dataCoding uint8, msgContent s
 	return DecodeCMPPCContent(ctx, newContent, dataCoding)
 }
 
-func DecodeSGIPContent(ctx context.Context, dataCoding int, msgContent string) (content string, err error) {
+func DecodeSMGPContentSimplt(ctx context.Context, dataCoding int, msgContent string) (content string, err error) {
 	_, _, _, newContent, _ := ParseLongSmsContent(msgContent)
 	return DecodeCMPPCContent(ctx, newContent, uint8(dataCoding))
 }
