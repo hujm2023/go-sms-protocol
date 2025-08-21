@@ -37,7 +37,7 @@ func (s *SubmitTestSuite) TestSubmit_IEncode() {
 		DestTermIDCount: 1,
 		DestTermID:      []string{"17600000000"},
 		MsgLength:       uint8(len([]byte("hello test msg"))),
-		MsgContent:      "hello test msg",
+		MsgContent:      []byte("hello test msg"),
 		Reserve:         "",
 	}
 	data, err := submit.IEncode()
@@ -70,7 +70,7 @@ func (s *SubmitTestSuite) TestSubmit_IDecode() {
 	s.Equal(uint8(1), submit.DestTermIDCount)
 	s.Equal([]string{"17600000000"}, submit.DestTermID)
 	s.Equal(uint8(len([]byte("hello test msg"))), submit.MsgLength)
-	s.Equal("hello test msg", submit.MsgContent)
+	s.Equal("hello test msg", string(submit.MsgContent))
 }
 
 func TestSubmit(t *testing.T) {

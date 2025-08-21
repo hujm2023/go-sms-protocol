@@ -68,7 +68,7 @@ func TestSubmit(t *testing.T) {
 		MessageCoding:    0,
 		MessageType:      0,
 		MessageLength:    8,
-		MessageContent:   "test msg",
+		MessageContent:   []byte("test msg"),
 		Reserved:         "",
 	}
 
@@ -138,5 +138,5 @@ func TestSubmit_1(t *testing.T) {
 	// 实现接口级别的单测
 	a := new(Submit)
 	assert.Nil(t, a.IDecode(raw))
-	t.Log(a.MessageContent)
+	t.Log(string(a.MessageContent))
 }

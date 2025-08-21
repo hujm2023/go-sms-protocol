@@ -55,6 +55,38 @@ func ParseLongSmsContent(content string) (frameKey, total, index int, newContent
 	return
 }
 
+// ParseLongSmsContent parses the header of a concatenated SMS.
+// frameKey: Unique identifier for this batch of messages
+// total: Total count of messages in this concatenated SMS batch
+// index: Index of this message within the concatenated SMS batch, starting from 1
+// newContent: The actual content of this message after removing the concatenated SMS header
+// valid: Indicates whether it conforms to the concatenated SMS format.
+func ParseLongSmsContentBytes(content []byte) (frameKey, total, index int, newContent []byte, valid bool) {
+	newContent = content
+	valid = true
+	if len(content) < minLongSmsHeaderLength {
+		valid = false
+		return
+	}
+	switch {
+	case content[0] == longMsgHeader6ByteFrameKey && content[1] == longMsgHeader6ByteFrameTotal && content[2] == longMsgHeader6ByteFrameNum:
+		frameKey = int(content[3] & 0xff)
+		total = int(content[4] & 0xff)
+		index = int(content[5] & 0xff)
+		newContent = content[6:]
+	case len(content) > minLongSmsHeaderLength &&
+		content[0] == longMsgHeader7ByteFrameKey && content[1] == longMsgHeader7ByteFrameTotal && content[2] == longMsgHeader7ByteFrameNum:
+		frameKey = int((content[3] & 0xff) | (content[4] & 0xff))
+		total = int(content[5] & 0xff)
+		index = int(content[6] & 0xff)
+		newContent = content[7:]
+	default:
+		// Not a supported UDHI
+		valid = false
+	}
+	return
+}
+
 // EncodeCMPPContentAndSplit encodes CMPP content and, if necessary, performs segmentation for long messages.
 // If the provided encoding cannot be applied to the content, UCS2 encoding will be used as a fallback.
 // It ultimately returns the encoded binary, the actual encoding used, and potential errors that may occur.
@@ -103,6 +135,27 @@ func DecodeCMPPCContent(_ context.Context, source string, dataCoding uint8) (new
 		return source, err
 	}
 	return string(dataBytes), nil
+}
+
+// DecodeCMPPCContent decodes CMPP content using the provided dataCoding.
+func DecodeCMPPCContentBytes(_ context.Context, source []byte, dataCoding uint8) (newContent []byte, err error) {
+	var dataBytes []byte
+	switch dataCoding {
+	case datacoding.CMPP_CODING_ASCII.ToUint8():
+		dataBytes, err = datacoding.Ascii(source).Decode()
+	case datacoding.CMPP_CODING_GBK.ToUint8():
+		dataBytes, err = datacoding.GB18030(source).Decode()
+	case datacoding.CMPP_CODING_UCS2_NO_SIGN.ToUint8():
+		fallthrough
+	case datacoding.CMPP_CODING_UCS2.ToUint8():
+		dataBytes, err = datacoding.UCS2(source).Decode()
+	default:
+		err = datacoding.ErrUnsupportedDataCoding
+	}
+	if err != nil {
+		return source, err
+	}
+	return dataBytes, nil
 }
 
 // EncodeSMPPContentAndSplit encodes SMPP content and, if necessary, performs segmentation for long messages.
@@ -171,6 +224,31 @@ func DecodeSMPPCContent(ctx context.Context, source string, dataCoding int) (new
 		return source, err
 	}
 	return string(dataBytes), nil
+}
+
+// DecodeSMPPCContent decodes SMPP content using the provided dataCoding.
+func DecodeSMPPCContentBytes(ctx context.Context, source []byte, dataCoding int) (newContent []byte, err error) {
+	var dataBytes []byte
+	switch dataCoding {
+	case datacoding.SMPP_CODING_GSM7_UNPACKED.ToInt(), datacoding.SMPP_CODING_GSM7_PACKED.ToInt():
+		// Attempt decoding using 'unpacked' first; if unsuccessful, attempt using 'packed' again.
+		dataBytes, err = datacoding.GSM7Unpacked(source).Decode()
+		if err != nil {
+			dataBytes, err = gsm7encoding.Decode(gsm7encoding.Unpack([]byte(source)))
+		}
+	case datacoding.SMPP_CODING_ASCII.ToInt():
+		dataBytes, err = datacoding.Ascii(source).Decode()
+	case datacoding.SMPP_CODING_Latin1.ToInt():
+		dataBytes, err = datacoding.Latin1(source).Decode()
+	case datacoding.SMPP_CODING_UCS2.ToInt():
+		dataBytes, err = datacoding.UCS2(source).Decode()
+	default:
+		err = datacoding.ErrUnsupportedDataCoding
+	}
+	if err != nil {
+		return source, err
+	}
+	return dataBytes, nil
 }
 
 // encodeAndSplitGSM7Packed specifically handles GSM7 (packed).

@@ -4,22 +4,22 @@ import (
 	"context"
 )
 
-func DecodeCMPPContentSimple(ctx context.Context, dataCoding uint8, msgContent string) (content string, err error) {
-	_, _, _, newContent, _ := ParseLongSmsContent(msgContent)
-	return DecodeCMPPCContent(ctx, newContent, dataCoding)
+func DecodeCMPPContentSimple(ctx context.Context, dataCoding uint8, msgContent []byte) (content []byte, err error) {
+	_, _, _, newContent, _ := ParseLongSmsContentBytes(msgContent)
+	return DecodeCMPPCContentBytes(ctx, newContent, dataCoding)
 }
 
-func DecodeSMPPContentSimple(ctx context.Context, dataCoding uint8, msgContent string) (content string, err error) {
-	_, _, _, newContent, _ := ParseLongSmsContent(msgContent)
-	return DecodeSMPPCContent(ctx, newContent, int(dataCoding))
+func DecodeSMPPContentSimple(ctx context.Context, dataCoding uint8, msgContent []byte) (content []byte, err error) {
+	_, _, _, newContent, _ := ParseLongSmsContentBytes(msgContent)
+	return DecodeSMPPCContentBytes(ctx, newContent, int(dataCoding))
 }
 
-func DecodeSGIPContentSimple(ctx context.Context, dataCoding uint8, msgContent string) (content string, err error) {
-	_, _, _, newContent, _ := ParseLongSmsContent(msgContent)
-	return DecodeCMPPCContent(ctx, newContent, dataCoding)
+func DecodeSGIPContentSimple(ctx context.Context, dataCoding uint8, msgContent []byte) (content []byte, err error) {
+	_, _, _, newContent, _ := ParseLongSmsContentBytes(msgContent)
+	return DecodeCMPPCContentBytes(ctx, newContent, dataCoding)
 }
 
-func DecodeSMGPContentSimplt(ctx context.Context, dataCoding int, msgContent string) (content string, err error) {
-	_, _, _, newContent, _ := ParseLongSmsContent(msgContent)
-	return DecodeCMPPCContent(ctx, newContent, uint8(dataCoding))
+func DecodeSMGPContentSimplt(ctx context.Context, dataCoding uint8, msgContent []byte) (content []byte, err error) {
+	_, _, _, newContent, _ := ParseLongSmsContentBytes(msgContent)
+	return DecodeCMPPCContentBytes(ctx, newContent, dataCoding)
 }
