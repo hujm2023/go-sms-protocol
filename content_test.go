@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hujm2023/go-sms-protocol/datacoding"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/hujm2023/go-sms-protocol/datacoding"
 )
 
 // ContentTestSuite is a test suite for content decoding functions.
@@ -46,12 +47,12 @@ func (s *ContentTestSuite) TestDecodeCMPPContentSimple() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			content, err := DecodeCMPPContentSimple(context.Background(), tt.dataCoding, tt.msgContent)
+			content, err := DecodeCMPPContentSimple(context.Background(), tt.dataCoding, []byte(tt.msgContent))
 			if tt.wantErr {
 				s.Error(err)
 			} else {
 				s.NoError(err)
-				s.Equal(tt.wantContent, content, tt.name)
+				s.Equal(tt.wantContent, string(content), tt.name)
 			}
 		})
 	}
@@ -62,21 +63,21 @@ func (s *ContentTestSuite) TestDecodeSMPPContentSimple() {
 	// Note: DecodeSMPPContentSimple does not handle long message splitting internally in the provided snippet.
 	// It passes the full msgContent to DecodeSMPPCContent.
 	// We will test it as is.
-	content, err := DecodeSMPPContentSimple(context.Background(), uint8(datacoding.SMPP_CODING_ASCII), "test")
+	content, err := DecodeSMPPContentSimple(context.Background(), uint8(datacoding.SMPP_CODING_ASCII), []byte("test"))
 	s.NoError(err)
-	s.Equal("test", content)
+	s.Equal("test", string(content))
 }
 
 // TestDecodeSGIPContentSimple tests the DecodeSGIPContentSimple function.
 func (s *ContentTestSuite) TestDecodeSGIPContentSimple() {
-	content, err := DecodeSGIPContentSimple(context.Background(), uint8(datacoding.CMPP_CODING_GBK), string([]byte{0x05, 0x00, 0x03, 0x01, 0x02, 0x01})+string([]byte{0xc4, 0xe3, 0xba, 0xc3}))
+	content, err := DecodeSGIPContentSimple(context.Background(), uint8(datacoding.CMPP_CODING_GBK), append([]byte{0x05, 0x00, 0x03, 0x01, 0x02, 0x01}, []byte{0xc4, 0xe3, 0xba, 0xc3}...))
 	s.NoError(err)
-	s.Equal("你好", content)
+	s.Equal("你好", string(content))
 }
 
 // TestDecodeSGIPContent tests the DecodeSGIPContent function.
 func (s *ContentTestSuite) TestDecodeSGIPContent() {
-	content, err := DecodeSMGPContentSimplt(context.Background(), int(datacoding.CMPP_CODING_GBK), string([]byte{0x05, 0x00, 0x03, 0x01, 0x02, 0x01})+string([]byte{0xc4, 0xe3, 0xba, 0xc3}))
+	content, err := DecodeSMGPContentSimplt(context.Background(), datacoding.CMPP_CODING_GBK.ToUint8(), append([]byte{0x05, 0x00, 0x03, 0x01, 0x02, 0x01}, []byte{0xc4, 0xe3, 0xba, 0xc3}...))
 	s.NoError(err)
-	s.Equal("你好", content)
+	s.Equal("你好", string(content))
 }

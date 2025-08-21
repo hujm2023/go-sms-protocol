@@ -68,7 +68,7 @@ type Submit struct {
 	MsgLength uint8
 
 	// 短消息内容
-	MsgContent string
+	MsgContent []byte
 
 	// 保留
 	Reserve string
@@ -103,7 +103,7 @@ func (s *Submit) IDecode(data []byte) error {
 		s.DestTermID = append(s.DestTermID, tmp)
 	}
 	s.MsgLength = b.ReadUint8()
-	s.MsgContent = string(b.ReadNBytes(int(s.MsgLength)))
+	s.MsgContent = b.ReadNBytes(int(s.MsgLength))
 	s.Reserve = b.ReadCStringN(8)
 
 	var parseErr error
@@ -134,7 +134,7 @@ func (s *Submit) IEncode() ([]byte, error) {
 		b.WriteFixedLenString(id, 21)
 	}
 	b.WriteUint8(s.MsgLength)
-	b.WriteFixedLenString(s.MsgContent, int(s.MsgLength))
+	b.WriteBytes(s.MsgContent)
 	b.WriteFixedLenString(s.Reserve, 8)
 	b.WriteBytes(s.Options.Serialize())
 

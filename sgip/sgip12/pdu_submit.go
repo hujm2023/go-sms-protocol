@@ -103,7 +103,7 @@ type Submit struct {
 	MessageLength uint32
 
 	// MessageLength 字节 短消息的内容
-	MessageContent string
+	MessageContent []byte
 
 	// 8 字节 保留，扩展用
 	Reserved string
@@ -142,7 +142,7 @@ func (p *Submit) IDecode(data []byte) error {
 	p.MessageCoding = b.ReadUint8()
 	p.MessageType = b.ReadUint8()
 	p.MessageLength = b.ReadUint32()
-	p.MessageContent = string(b.ReadNBytes(int(p.MessageLength)))
+	p.MessageContent = b.ReadNBytes(int(p.MessageLength))
 	p.Reserved = b.ReadCStringN(8)
 	return b.Error()
 }
@@ -178,7 +178,7 @@ func (p *Submit) IEncode() ([]byte, error) {
 	b.WriteUint8(p.MessageCoding)
 	b.WriteUint8(p.MessageType)
 	b.WriteUint32(p.MessageLength)
-	b.WriteFixedLenString(p.MessageContent, int(p.MessageLength))
+	b.WriteBytes(p.MessageContent)
 	b.WriteFixedLenString(p.Reserved, 8)
 
 	return b.BytesWithLength()
