@@ -13,14 +13,23 @@ type ICommander interface {
 	ToUint32() uint32
 }
 
+type Encoder interface {
+	IEncode() ([]byte, error)
+}
+
+type Decoder interface {
+	IDecode(data []byte) error
+}
+
+type EncoderDecoder interface {
+	Encoder
+	Decoder
+}
+
 // PDU stands for Protocol Data Unit, which is the package for standard SMS protocols.
 // PDU 表示标准协议的包(所有标准协议pdu都需要实现)
 type PDU interface {
-	// IEncode 序列化
-	IEncode() ([]byte, error)
-
-	// IDecode 反序列
-	IDecode(data []byte) error
+	EncoderDecoder
 
 	// SetSequenceID 为 PDU 设置提交时的 seqID
 	SetSequenceID(id uint32)

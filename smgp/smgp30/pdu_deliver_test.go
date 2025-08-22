@@ -277,3 +277,56 @@ func TestFindSubValue(t *testing.T) {
 		}
 	})
 }
+
+type DeliverContentTestSuite struct {
+	suite.Suite
+	msgContentString string
+	msgContent       []byte
+}
+
+func (s *DeliverContentTestSuite) SetupTest() {
+	s.msgContentString = `id:"!2Bys sub:001 dlvrd:001 submit date:2508222132 done date:2508222132 stat:DELIVRD err:000 text:`
+	s.msgContent = []byte{105, 100, 58, 0, 0, 99, 8, 34, 33, 50, 66, 121, 115, 32, 115, 117, 98, 58, 48, 48, 49, 32, 100, 108, 118, 114, 100, 58, 48, 48, 49, 32, 115, 117, 98, 109, 105, 116, 32, 100, 97, 116, 101, 58, 50, 53, 48, 56, 50, 50, 50, 49, 51, 50, 32, 100, 111, 110, 101, 32, 100, 97, 116, 101, 58, 50, 53, 48, 56, 50, 50, 50, 49, 51, 50, 32, 115, 116, 97, 116, 58, 68, 69, 76, 73, 86, 82, 68, 32, 101, 114, 114, 58, 48, 48, 48, 32, 116, 101, 120, 116, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+}
+
+func (s *DeliverContentTestSuite) TestDeliverContent_IEncode() {
+	d := &DeliveryReceipt{
+		ID:       "00006308222132427973",
+		Sub:      "001",
+		Dlvrd:    "001",
+		SubDate:  "2508222132",
+		DoneDate: "2508222132",
+		Stat:     "DELIVRD",
+		Err:      "000",
+		Text:     "",
+	}
+	b, err := d.IEncode()
+	assert.NoError(s.T(), err)
+	// s.msgContent 末尾的0不应该计算在内
+	shouldEqual := make([]byte, len(s.msgContent))
+	copy(shouldEqual, s.msgContent)
+	for i := len(shouldEqual) - 1; i >= 0; i-- {
+		if shouldEqual[i] != 0 {
+			shouldEqual = shouldEqual[:i+1]
+			break
+		}
+	}
+	assert.Equal(s.T(), shouldEqual, b)
+}
+
+func (s *DeliverContentTestSuite) TestDeliverContent_IDecode() {
+	d := new(DeliveryReceipt)
+	assert.Nil(s.T(), d.IDecode(s.msgContent))
+	assert.Equal(s.T(), "00006308222132427973", d.ID)
+	assert.Equal(s.T(), "001", d.Sub)
+	assert.Equal(s.T(), "001", d.Dlvrd)
+	assert.Equal(s.T(), "2508222132", d.SubDate)
+	assert.Equal(s.T(), "2508222132", d.DoneDate)
+	assert.Equal(s.T(), "DELIVRD", d.Stat)
+	assert.Equal(s.T(), "000", d.Err)
+	assert.Equal(s.T(), "", d.Text)
+}
+
+func TestDeliverContentTestSuite(t *testing.T) {
+	suite.Run(t, new(DeliverContentTestSuite))
+}

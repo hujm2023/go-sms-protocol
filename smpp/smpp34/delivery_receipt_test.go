@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestExtractDeliveryReceipt(t *testing.T) {
@@ -145,4 +146,40 @@ func BenchmarkExtractDeliveryReceipt(b *testing.B) {
 		_, _ = ExtractDeliveryReceipt(_s)
 	}
 	b.StopTimer()
+}
+
+type DeliveryReceiptTestSuite struct {
+	suite.Suite
+	shortMessage []byte
+}
+
+func (s *DeliveryReceiptTestSuite) SetupTest() {
+	s.shortMessage = []byte("id:1750418374205502492 sub:001 dlvrd:001 submit date:2508230113 done date:2508230113 stat:DELIVRD err:000 text:success")
+}
+
+func (s *DeliveryReceiptTestSuite) TestIDecode() {
+	d := new(DeliveryReceipt)
+	err := d.IDecode(s.shortMessage)
+	s.NoError(err)
+	s.Equal("1750418374205502492", d.ID)
+	s.Equal("001", d.Sub)
+	s.Equal("001", d.Dlvrd)
+	s.Equal("2508230113", d.SubDate)
+	s.Equal("2508230113", d.DoneDate)
+	s.Equal("DELIVRD", d.Stat)
+	s.Equal("000", d.Err)
+	s.Equal("success", d.Text)
+}
+
+func (s *DeliveryReceiptTestSuite) TestIEncode() {
+	d := new(DeliveryReceipt)
+	err := d.IDecode(s.shortMessage)
+	s.NoError(err)
+	b, err := d.IEncode()
+	s.NoError(err)
+	s.Equal(s.shortMessage, b)
+}
+
+func TestDeliveryReceiptTestSuite(t *testing.T) {
+	suite.Run(t, new(DeliveryReceiptTestSuite))
 }
