@@ -172,13 +172,12 @@ func ReadOptions(r *packet.Reader) Options {
 	}
 
 	options := make(Options)
-	temp := make([]byte, 4)
 	for {
 		if r.Remaining() == 0 {
 			return options
 		}
 
-		temp = temp[:0]
+		temp := make([]byte, 4)
 
 		r.ReadBytes(temp)
 		if e := r.Error(); e != nil {
