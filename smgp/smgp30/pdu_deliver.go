@@ -227,8 +227,48 @@ func (d DeliveryReceipt) Valid() bool {
 }
 
 // ExtractDeliveryReceipt 将short_message字符串提取为 DeliveryReceipt 结构体.
+func (d *DeliveryReceipt) IEncode() ([]byte, error) {
+	buf := packet.NewPacketWriter(0)
+	defer buf.Release()
+
+	buf.WriteString("id:")
+	id, err := hex.DecodeString(d.ID)
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteBytes(id)
+	buf.WriteString(" sub:")
+	buf.WriteString(d.Sub)
+	buf.WriteString(" dlvrd:")
+	buf.WriteString(d.Dlvrd)
+	buf.WriteString(" submit date:")
+	buf.WriteString(d.SubDate)
+	buf.WriteString(" done date:")
+	buf.WriteString(d.DoneDate)
+	buf.WriteString(" stat:")
+	buf.WriteString(d.Stat)
+	buf.WriteString(" err:")
+	buf.WriteString(d.Err)
+	buf.WriteString(" text:")
+	buf.WriteString(d.Text)
+	return buf.Bytes()
+}
+
+func (d *DeliveryReceipt) IDecode(data []byte) error {
+	// 去掉最后的 0x00
+	s := strings.TrimRight(string(data), "\x00")
+	d.ID = findSMGPIDValue(s)
+	d.Sub = findSubValue(s, "sub", "Sub", 3)
+	d.Dlvrd = findSubValue(s, "dlvrd", "Dlvrd", 3)
+	d.SubDate = findSubValue(s, "submit date", "Submit_Date", 10)
+	d.DoneDate = findSubValue(s, "done date", "Done_Date", 10)
+	d.Stat = findSubValue(s, "stat", "Stat", 7)
+	d.Err = findSubValue(s, "err", "Err", 3)
+	d.Text = findSubValue(s, "text", "Text", 20)
+	return nil
+}
+
 func ExtractDeliveryReceipt(s string) (d DeliveryReceipt, err error) {
-	// TODO: 考虑key存在大写的情况
 	d.ID = findSMGPIDValue(s)
 	d.Sub = findSubValue(s, "sub", "Sub", 3)
 	d.Dlvrd = findSubValue(s, "dlvrd", "Dlvrd", 3)

@@ -2,6 +2,8 @@ package smpp34
 
 import (
 	"strings"
+
+	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
 // DeliveryReceipt is the model representation of short_message for SMPP PDU delivery_sm.
@@ -26,6 +28,42 @@ func (d DeliveryReceipt) Valid() bool {
 }
 
 // ExtractDeliveryReceipt extracts the short_message string into a DeliveryReceipt struct.
+func (d *DeliveryReceipt) IEncode() ([]byte, error) {
+	buf := packet.NewPacketWriter(0)
+	defer buf.Release()
+
+	buf.WriteString("id:")
+	buf.WriteString(d.ID)
+	buf.WriteString(" sub:")
+	buf.WriteString(d.Sub)
+	buf.WriteString(" dlvrd:")
+	buf.WriteString(d.Dlvrd)
+	buf.WriteString(" submit date:")
+	buf.WriteString(d.SubDate)
+	buf.WriteString(" done date:")
+	buf.WriteString(d.DoneDate)
+	buf.WriteString(" stat:")
+	buf.WriteString(d.Stat)
+	buf.WriteString(" err:")
+	buf.WriteString(d.Err)
+	buf.WriteString(" text:")
+	buf.WriteString(d.Text)
+	return buf.Bytes()
+}
+
+func (d *DeliveryReceipt) IDecode(data []byte) error {
+	s := strings.TrimRight(string(data), "\x00")
+	d.ID = findSubValue(s, "id", 10)
+	d.Sub = findSubValue(s, "sub", 3)
+	d.Dlvrd = findSubValue(s, "dlvrd", 3)
+	d.SubDate = findSubValue(s, "submit date", 10)
+	d.DoneDate = findSubValue(s, "done date", 10)
+	d.Stat = findSubValue(s, "stat", 7)
+	d.Err = findSubValue(s, "err", 3)
+	d.Text = findSubValue(s, "text", 20)
+	return nil
+}
+
 func ExtractDeliveryReceipt(s string) (d DeliveryReceipt, err error) {
 	// TODO: Consider the case where the key is in uppercase
 	d.ID = findSubValue(s, "id", 10)
