@@ -31,7 +31,7 @@ func (s *DeliverTestSuite) TestDeliver_IEncode() {
 			CommandID:  smgp.CommandDeliver,
 			SequenceID: 123,
 		},
-		MsgID:      string([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 1}),
+		MsgID:      "01020304050607080901",
 		DestTermID: "17500000000",
 		MsgFormat:  smgp.GB18030,
 		SrcTermID:  "1069000000",
