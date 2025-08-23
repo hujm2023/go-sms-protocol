@@ -98,7 +98,7 @@ func (s *SubmitRespTestSuite) TestSubmitResp_IEncode() {
 			CommandID:  smgp.CommandSubmitResp,
 			SequenceID: uint32(1234),
 		},
-		MsgID:  string([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 1}),
+		MsgID:  "01020304050607080901",
 		Status: uint32(0),
 	}
 	data, err := submitResp.IEncode()

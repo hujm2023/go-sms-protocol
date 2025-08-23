@@ -189,20 +189,7 @@ func (s *Submit) String() string {
 type SubmitResp struct {
 	Header smgp.Header
 
-	// 8 字节，信息标识，生成算法如下:
-	// 采用 64 位(8 字节)的整数:
-	// 		(1)时间(格式为 MMDDHHMMSS，即 月日时分秒)
-	// 			:bit64~bit39，其中
-	// 				bit64~bit61:月份的二进制表示;
-	// 				bit60~bit56:日的二进制表示;
-	// 				bit55~bit51:小时的二进制表示;
-	// 				bit50~bit45:分的二进制表示;
-	// 				bit44~bit39:秒的二进制表示;
-	// 		(2)短信网关代码:bit38~bit17，把短信网关的代码转换为整数填写到该字段中。
-	// 		(3)序列号:bit16~bit1，顺序增加，步 长为 1，循环使用。
-	//
-	// 各部分如不能填满，左补零，右对齐。
-	// (SP 根据请求和应答消息的 Sequence_Id 一致性就可得到 SMGP_Submit 消息的 Msg_Id)
+	// 10 字节 参考 pdu_deliver.go 中 Deliver.MsgID 注释
 	MsgID string
 
 	// 1 字节，提交结果
@@ -231,7 +218,11 @@ func (s *SubmitResp) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	smgp.WriteHeaderNoLength(s.Header, b)
-	b.WriteFixedLenString(s.MsgID, 10)
+	msgID, err := hex.DecodeString(s.MsgID)
+	if err != nil {
+		return nil, err
+	}
+	b.WriteBytes(msgID)
 	b.WriteUint32(s.Status)
 
 	return b.BytesWithLength()

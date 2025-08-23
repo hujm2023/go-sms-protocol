@@ -14,16 +14,14 @@ import (
 type Deliver struct {
 	smgp.Header
 
-	/* 8 字节，信息标识，采用 64 位(8 字节)的整数:
-	(1)时间(格式为 MMDDHHMMSS，即月日时分秒):bit64~bit39，其中
-		bit64~bit61:月份的二进制表示;
-		bit60~bit56:日的二进制表示;
-		bit55~bit51:小时的二进制表示;
-		bit50~bit45:分的二进制表示;
-		bit44~bit39:秒的二进制表示;
-	(2)短信网关代码:bit38~bit17，把短信 网关的代码转换为整数填写到该字 段中。
-	(3)序列号:bit16~bit1，顺序增加，步 长为 1，循环使用。
-	各部分如不能填满，左补零，右对齐。
+	/* 10 字节，信息标识，采用 10 字节的整数:
+	MsgID 由三部分组成：
+	- SMGW 代码：3字节（BCD码。编码规则如下：3 位区号（不足前添 0）+2 位设备类别+1 位序号区号：所在省长途区号设备类别：SMGW 取 06 序号：所在省的设备编码，例如第一个网关编号为 1
+	- 时间：4 字节（BCD 码），格式为 MMDDHHMM（月日时分）
+	- 序列号：3 字节（BCD 码），取值范围为 000000～999999，从 0 开始，顺序累加，步长为1,循环使用。
+	例如某 SMGW 的代码为 010061，在 2003年1月16日下午5时0分收到一条短消息，
+	这条短消息的 MsgID 为：0x01006101161700012345，其中 010061 为 SMGW 代码，01161700 为时间，012345 为序列号。
+	为了展示方便，这里将 MsgID 转换为 16 进制字符串。反序列化时使用hex.EncodeToString，序列化时使用 hex.DecodeString
 	*/
 	MsgID string
 
@@ -82,7 +80,11 @@ func (d *Deliver) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	smgp.WriteHeaderNoLength(d.Header, b)
-	b.WriteFixedLenString(d.MsgID, 10)
+	msgID, err := hex.DecodeString(d.MsgID)
+	if err != nil {
+		return nil, err
+	}
+	b.WriteBytes(msgID)
 	b.WriteUint8(d.IsReport)
 	b.WriteUint8(d.MsgFormat)
 	b.WriteFixedLenString(d.RecvTime, 14)
@@ -171,8 +173,11 @@ func (d *DeliverResp) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	smgp.WriteHeaderNoLength(d.Header, b)
-	msgID, _ := hex.DecodeString(d.MsgID)
-	b.WriteFixedLenString(string(msgID), 10)
+	msgID, err := hex.DecodeString(d.MsgID)
+	if err != nil {
+		return nil, err
+	}
+	b.WriteBytes(msgID)
 	b.WriteUint32(d.Result.Data())
 
 	return b.BytesWithLength()
