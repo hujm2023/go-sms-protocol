@@ -1,6 +1,7 @@
 package sgip
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -21,4 +22,29 @@ func FixSGIPMobile(mobile string) string {
 		return mobile[1:]
 	}
 	return "86" + mobile
+}
+
+func SequenceIDString(sequenceID [3]uint32) string {
+	return fmt.Sprintf("%d:%d:%d", sequenceID[0], sequenceID[1], sequenceID[2])
+}
+
+func SequenceIDFromString(sequenceID string) [3]uint32 {
+	tmp := strings.Split(sequenceID, ":")
+	if len(tmp) != 3 {
+		return [3]uint32{}
+	}
+	var id [3]uint32
+	_, err := fmt.Sscanf(tmp[0], "%d", &id[0])
+	if err != nil {
+		return [3]uint32{}
+	}
+	_, err = fmt.Sscanf(tmp[1], "%d", &id[1])
+	if err != nil {
+		return [3]uint32{}
+	}
+	_, err = fmt.Sscanf(tmp[2], "%d", &id[2])
+	if err != nil {
+		return [3]uint32{}
+	}
+	return id
 }
