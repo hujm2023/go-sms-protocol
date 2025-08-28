@@ -75,3 +75,8 @@ func (p *Header) GetSequenceID() uint32 {
 func (p *Header) GetMsgId() string {
 	return strconv.FormatUint(uint64(p.Sequence[2]), 10)
 }
+
+func (p *Header) GetMsgIDFull() string {
+	// gatewayID:submitTime:sequenceID
+	return SequenceIDString(p.Sequence)
+}

@@ -35,6 +35,10 @@ func (p *Report) GetSubmitIdStr() string {
 	return strconv.FormatUint(uint64(p.SubmitSequence[2]), 10)
 }
 
+func (p *Report) GetSubmitIDFull() string {
+	return sgip.SequenceIDString(p.SubmitSequence)
+}
+
 func (p *Report) GetSubmitId() uint32 {
 	return p.SubmitSequence[2]
 }
