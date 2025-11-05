@@ -17,6 +17,7 @@ type Version interface {
 const (
 	CMPPVersion2_0 CMPPVersion = 0x20
 	CMPPVersion2_1 CMPPVersion = 0x21
+	CMPPVersion3_0 CMPPVersion = 0x30
 )
 
 // CMPPVersion cmpp 协议版本
@@ -152,6 +153,7 @@ func (u UnknownVersion) ToInt() int {
 var (
 	smpp34String = pvString(ProtocolSMPP, SMPPVersion3_4)
 	cmpp20String = pvString(ProtocolCMPP, CMPPVersion2_0)
+	cmpp30String = pvString(ProtocolCMPP, CMPPVersion3_0)
 	sgmp30String = pvString(ProtocolSMGP, SMGPVersion3_0)
 	sgip12String = pvString(ProtocolSGIP, SGIPVersion1_2)
 )
@@ -161,6 +163,8 @@ func ProtocolVersionString(p Protocol, v Version) string {
 	switch {
 	case p == ProtocolCMPP && v == CMPPVersion2_0:
 		return cmpp20String
+	case p == ProtocolCMPP && v == CMPPVersion3_0:
+		return cmpp30String
 	case p == ProtocolSMPP && v == SMPPVersion3_4:
 		return smpp34String
 	case p == ProtocolSMGP && v == SMGPVersion3_0:

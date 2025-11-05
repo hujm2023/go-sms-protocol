@@ -32,10 +32,12 @@ func TestProtocolVersionString(t *testing.T) {
 func TestVersionString(t *testing.T) {
 	assert.Equal(t, "V20", VersionString(CMPPVersion2_0))
 	assert.Equal(t, "V21", VersionString(CMPPVersion2_1))
+	assert.Equal(t, "V30", VersionString(CMPPVersion3_0))
 	assert.Equal(t, "V34", VersionString(SMPPVersion3_4))
 	assert.Equal(t, "V12", VersionString(SGIPVersion1_2))
 	assert.Equal(t, "V34", VersionIntString(uint8(SMPPVersion3_4.ToInt8())))
 	assert.Equal(t, "V20", VersionIntString(uint8(CMPPVersion2_0.ToInt8())))
+	assert.Equal(t, "V30", VersionIntString(uint8(CMPPVersion3_0.ToInt8())))
 	assert.Equal(t, "V21", VersionIntString(uint8(CMPPVersion2_1.ToInt8())))
 	assert.Equal(t, "V12", VersionIntString(uint8(SGIPVersion1_2.ToInt8())))
 }
