@@ -10,16 +10,16 @@ import (
 )
 
 type TLV struct {
-	tag    uint16
-	length uint16
-	value  []byte
+	Tag        uint16
+	Length     uint16
+	ValueBytes []byte
 }
 
 func NewTLV(tag uint16, value []byte) TLV {
 	return TLV{
-		tag:    tag,
-		length: uint16(len(value)),
-		value:  value,
+		Tag:        tag,
+		Length:     uint16(len(value)),
+		ValueBytes: value,
 	}
 }
 
@@ -28,26 +28,26 @@ func NewTLVByString(tag uint16, value string) TLV {
 }
 
 func (t TLV) Bytes() []byte {
-	b := make([]byte, t.length+4)
-	binary.BigEndian.PutUint16(b[0:2], t.tag)
-	binary.BigEndian.PutUint16(b[2:4], t.length)
-	copy(b[4:], t.value)
+	b := make([]byte, t.Length+4)
+	binary.BigEndian.PutUint16(b[0:2], t.Tag)
+	binary.BigEndian.PutUint16(b[2:4], t.Length)
+	copy(b[4:], t.ValueBytes)
 	return b
 }
 
 func (t TLV) Value() []byte {
-	return t.value
+	return t.ValueBytes
 }
 
 func (t TLV) IsEmpty() bool {
-	return t.tag == 0 && t.length == 0 && len(t.value) == 0
+	return t.Tag == 0 && t.Length == 0 && len(t.ValueBytes) == 0
 }
 
 func (t TLV) String() string {
 	if t.IsEmpty() {
 		return ""
 	}
-	return fmt.Sprintf("TLV{Tag=%#x, Length=%d, Value=%v, ValueString=%s}", t.tag, t.length, t.value, string(t.value))
+	return fmt.Sprintf("TLV{Tag=%#x, Length=%d, Value=%v, ValueString=%s}", t.Tag, t.Length, t.ValueBytes, string(t.ValueBytes))
 }
 
 func ReadTLVs(r *packet.Reader) (TLVs, error) {
@@ -90,9 +90,9 @@ func ReadTLVs(r *packet.Reader) (TLVs, error) {
 		}
 
 		tlvs[tag] = TLV{
-			tag:    tag,
-			length: length,
-			value:  value,
+			Tag:        tag,
+			Length:     length,
+			ValueBytes: value,
 		}
 	}
 
@@ -139,9 +139,9 @@ func ReadTLVs1(r *packet.Reader) TLVs {
 		}
 
 		tlvs[tag] = TLV{
-			tag:    tag,
-			length: length,
-			value:  value,
+			Tag:        tag,
+			Length:     length,
+			ValueBytes: value,
 		}
 	}
 
@@ -154,7 +154,7 @@ func (t *TLVs) SetTLV(tlv TLV) {
 	if *t == nil {
 		*t = make(TLVs)
 	}
-	(*t)[tlv.tag] = tlv
+	(*t)[tlv.Tag] = tlv
 }
 
 func (t TLVs) Bytes() []byte {

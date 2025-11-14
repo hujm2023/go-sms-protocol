@@ -44,9 +44,9 @@ func (s *TLVTestSuite) TestReadTLVs() {
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(t))
 	tlv := t[s.tag]
-	assert.Equal(s.T(), s.tag, tlv.tag)
-	assert.Equal(s.T(), s.length, tlv.length)
-	assert.True(s.T(), bytes.Equal(tlv.value, s.value))
+	assert.Equal(s.T(), s.tag, tlv.Tag)
+	assert.Equal(s.T(), s.length, tlv.Length)
+	assert.True(s.T(), bytes.Equal(tlv.ValueBytes, s.value))
 }
 
 func (s *TLVTestSuite) TestTLVString() {
@@ -60,9 +60,9 @@ func (s *TLVTestSuite) TestTLVString() {
 	assert.Equal(s.T(), "TLV{Tag=0x1e, Length=6, Value=[49 50 51 52 53 54], ValueString=123456}", tlv.String())
 
 	t[0x20] = TLV{
-		tag:    0x20,
-		length: 2,
-		value:  []byte{49, 50},
+		Tag:        0x20,
+		Length:     2,
+		ValueBytes: []byte{49, 50},
 	}
 	s.T().Log(t.String())
 }
@@ -74,14 +74,14 @@ func TestTLV(t *testing.T) {
 func TestStringerForTLVS(t *testing.T) {
 	tlvs := TLVs(make(map[uint16]TLV))
 	tlvs.SetTLV(TLV{
-		tag:    0x1e,
-		length: 6,
-		value:  []byte("123456"),
+		Tag:        0x1e,
+		Length:     6,
+		ValueBytes: []byte("123456"),
 	})
 	tlvs.SetTLV(TLV{
-		tag:    0x20,
-		length: 2,
-		value:  []byte{49, 50},
+		Tag:        0x20,
+		Length:     2,
+		ValueBytes: []byte{49, 50},
 	})
 
 	s := packet.NewPDUStringer()

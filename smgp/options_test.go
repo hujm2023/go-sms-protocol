@@ -50,7 +50,7 @@ func TestOptionsLen(t *testing.T) {
 		TAG_LinkID, []byte{0xAB, 0xCD},
 	))
 
-	expectedLen := 4 + len(options[TAG_TP_pid].value) + 4 + len(options[TAG_TP_udhi].value) + 4 + len(options[TAG_LinkID].value)
+	expectedLen := 4 + len(options[TAG_TP_pid].ValueBytes) + 4 + len(options[TAG_TP_udhi].ValueBytes) + 4 + len(options[TAG_LinkID].ValueBytes)
 	assert.Equal(t, expectedLen, options.Len())
 }
 

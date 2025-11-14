@@ -36,41 +36,41 @@ const (
 )
 
 type Option struct {
-	tag    uint16
-	length uint16
-	value  []byte
+	Tag        uint16
+	Length     uint16
+	ValueBytes []byte
 }
 
 func NewOption(tag Tag, value []byte) Option {
 	return Option{
-		tag:    uint16(tag),
-		length: uint16(len(value)),
-		value:  value,
+		Tag:        uint16(tag),
+		Length:     uint16(len(value)),
+		ValueBytes: value,
 	}
 }
 
 func (o Option) String() string {
-	return fmt.Sprintf("Option{tag:%d, length:%d, value:%v}", o.tag, o.length, o.value)
+	return fmt.Sprintf("Option{tag:%d, length:%d, value:%v}", o.Tag, o.Length, o.ValueBytes)
 }
 
 func (o Option) Len() int {
-	return int(o.length)
+	return int(o.Length)
 }
 
 func (o Option) Value() []byte {
-	return o.value
+	return o.ValueBytes
 }
 
 func (o Option) Bytes() []byte {
-	b := make([]byte, o.length+4)
-	binary.BigEndian.PutUint16(b[:2], o.tag)
-	binary.BigEndian.PutUint16(b[2:4], o.length)
-	copy(b[4:], o.value)
+	b := make([]byte, o.Length+4)
+	binary.BigEndian.PutUint16(b[:2], o.Tag)
+	binary.BigEndian.PutUint16(b[2:4], o.Length)
+	copy(b[4:], o.ValueBytes)
 	return b
 }
 
 func (o Option) IsEmpty() bool {
-	return o.tag == 0 && o.length == 0 && len(o.value) == 0
+	return o.Tag == 0 && o.Length == 0 && len(o.ValueBytes) == 0
 }
 
 // ---------------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ func (o Options) Add(opt Option) {
 		o = make(Options)
 	}
 
-	o[Tag(opt.tag)] = opt
+	o[Tag(opt.Tag)] = opt
 }
 
 func (o Options) String() string {
@@ -106,7 +106,7 @@ func (o Options) Len() int {
 	length := 0
 
 	for _, v := range o {
-		length += 2 + 2 + len(v.value)
+		length += 2 + 2 + len(v.ValueBytes)
 	}
 
 	return length
@@ -122,7 +122,7 @@ func (o Options) Serialize() []byte {
 
 func (o Options) TP_udhi() uint8 {
 	if val, exist := o[TAG_TP_udhi]; exist {
-		return val.value[0]
+		return val.ValueBytes[0]
 	}
 	return 0
 }
@@ -153,9 +153,9 @@ func ParseOptions(rawData []byte) (Options, error) {
 		p += int(vlen)
 
 		ops[Tag(tag)] = Option{
-			tag:    tag,
-			length: vlen,
-			value:  value,
+			Tag:        tag,
+			Length:     vlen,
+			ValueBytes: value,
 		}
 	}
 
@@ -203,9 +203,9 @@ func ReadOptions(r *packet.Reader) Options {
 		}
 
 		options[Tag(tag)] = Option{
-			tag:    tag,
-			length: length,
-			value:  value,
+			Tag:        tag,
+			Length:     length,
+			ValueBytes: value,
 		}
 	}
 
