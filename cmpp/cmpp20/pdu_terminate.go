@@ -88,7 +88,7 @@ func (p *PduTerminateResp) IEncode() ([]byte, error) {
 	// header
 	cmpp.WriteHeaderNoLength(p.Header, buf)
 
-	return buf.Bytes()
+	return buf.BytesWithLength()
 }
 
 // IDecode decodes the byte slice into a PduTerminateResp PDU.

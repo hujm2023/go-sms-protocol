@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"context"
-	"math/rand"
+	"crypto/rand"
 	"strings"
 	"testing"
 

@@ -2,7 +2,7 @@ package datacoding
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
@@ -18,7 +18,7 @@ func (g GB18030) Name() DataCoding {
 
 func (g GB18030) Encode() ([]byte, error) {
 	reader := transform.NewReader(bytes.NewReader(g), simplifiedchinese.GB18030.NewEncoder())
-	d, e := ioutil.ReadAll(reader)
+	d, e := io.ReadAll(reader)
 	if e != nil {
 		return nil, e
 	}
@@ -27,7 +27,7 @@ func (g GB18030) Encode() ([]byte, error) {
 
 func (g GB18030) Decode() ([]byte, error) {
 	reader := transform.NewReader(bytes.NewReader(g), simplifiedchinese.GB18030.NewDecoder())
-	d, e := ioutil.ReadAll(reader)
+	d, e := io.ReadAll(reader)
 	if e != nil {
 		return nil, e
 	}

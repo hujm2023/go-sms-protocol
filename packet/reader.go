@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
 )
 
 type Reader struct {
@@ -155,6 +156,16 @@ func (p *Reader) ReadNBytes(n int) []byte {
 	}
 
 	if n <= 0 {
+		return nil
+	}
+	if n > p.buffer.Len() {
+		if p.buffer.Len() == 0 {
+			p.opError = newPacketError(io.EOF, "ReadCStringN read")
+			return nil
+		}
+
+		p.buffer.Next(p.buffer.Len())
+		p.opError = newPacketError(fmt.Errorf("read unexpected length"), "ReadBytes")
 		return nil
 	}
 

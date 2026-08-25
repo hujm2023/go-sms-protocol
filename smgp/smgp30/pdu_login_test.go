@@ -98,8 +98,6 @@ func TestLogin(t *testing.T) {
 
 type LoginRespTestSuite struct {
 	suite.Suite
-	auth       []byte
-	secret     string
 	valueBytes []byte
 }
 
