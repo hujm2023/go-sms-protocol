@@ -123,6 +123,8 @@ The library does not maintain cross-segment state or assemble a complete message
 
 `codec.ConnReader` and `netpoll.Reader` are different interfaces. Using a `codec` implementation inside `nioserver` requires an adapter or a protocol-specific `UnpackFunc`.
 
+See the [runnable CMPP 2.0 server example](nioserver/examples/cmpp20server) for authentication, submit handling, simulated delivery receipts, heartbeats, and graceful shutdown.
+
 Important lifecycle rules:
 
 - `Run` binds and serves synchronously; the application owns process signals.
@@ -133,7 +135,7 @@ Important lifecycle rules:
 
 ## Scope and limitations
 
-- There is no built-in SMS gateway process, SMPP/CMPP client session manager, persistence layer, routing policy, or delivery retry engine.
+- There is no production-ready SMS gateway, SMPP/CMPP client session manager, persistence layer, routing policy, or delivery retry engine. The runnable server under `nioserver/examples` is an integration example.
 - Protocol coverage is limited to the PDU families listed above.
 - Long-message reassembly state belongs to the caller.
 - Authentication credentials, connection state, sequence allocation, and business-level delivery semantics remain application responsibilities.

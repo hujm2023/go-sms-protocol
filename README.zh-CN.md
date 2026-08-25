@@ -123,6 +123,8 @@ SMPP_ENQUIRE_LINK sequence=42
 
 `codec.ConnReader` 与 `netpoll.Reader` 是不同的接口。在 `nioserver` 中使用 `codec` 实现时，需要额外的适配器或协议专属 `UnpackFunc`。
 
+鉴权、提交处理、模拟状态报告、链路探活和优雅关闭的完整接线方式，可以参考[可运行的 CMPP 2.0 服务端示例](nioserver/examples/cmpp20server)。
+
 主要生命周期约束如下：
 
 - `Run` 负责绑定并同步运行；进程信号由宿主应用管理。
@@ -133,7 +135,7 @@ SMPP_ENQUIRE_LINK sequence=42
 
 ## 范围与限制
 
-- 本库不提供内置短信网关进程、SMPP/CMPP 客户端会话管理、持久化、路由策略或投递重试引擎。
+- 本库不提供可直接用于生产的短信网关、SMPP/CMPP 客户端会话管理、持久化、路由策略或投递重试引擎。`nioserver/examples` 下的可运行服务仅用于集成示例。
 - 协议覆盖范围仅限上表中的 PDU 命令族。
 - 长短信重组状态由调用方维护。
 - 认证凭据、连接状态、序列号分配和业务层投递语义仍由应用负责。
