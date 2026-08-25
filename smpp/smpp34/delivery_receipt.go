@@ -6,6 +6,17 @@ import (
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
+var deliveryReceiptFields = []string{
+	"id",
+	"sub",
+	"dlvrd",
+	"submit date",
+	"done date",
+	"stat",
+	"err",
+	"text",
+}
+
 // DeliveryReceipt is the model representation of short_message for SMPP PDU delivery_sm.
 // SMPP provides for return of an SMSC delivery receipt via the deliver_sm or data_sm PDU,which indicates the delivery status of the message.
 type DeliveryReceipt struct {
@@ -78,15 +89,24 @@ func ExtractDeliveryReceipt(s string) (d DeliveryReceipt, err error) {
 }
 
 func findSubValue(s string, sub string, maxSize int) (value string) {
-	maxSize = 0 // 先不校验
-
 	sub = sub + ":"
-	n := strings.Index(s, sub)
+	n := findDeliveryReceiptFieldStart(s, sub)
 	if n == -1 {
 		return ""
 	}
 
 	start := n + len(sub)
+	if strings.TrimSuffix(sub, ":") == "text" {
+		// The text field is an Octet String and may contain spaces. It normally
+		// terminates the receipt, so preserve the complete remainder. If a
+		// receipt contains a known field after text, use that field as the
+		// delimiter while still ignoring vendor-specific fields.
+		if next := nextDeliveryReceiptField(s, start); next >= 0 {
+			return s[start:next]
+		}
+		return s[start:]
+	}
+
 	// 当前 key 后面的下一个空格
 	spaceIdx := strings.Index(s[start:], " ")
 
@@ -98,9 +118,31 @@ func findSubValue(s string, sub string, maxSize int) (value string) {
 		value = s[start : start+spaceIdx]
 	}
 
-	if maxSize > 0 && len(value) > maxSize {
-		value = value[:maxSize]
-	}
-
+	// maxSize is retained for source compatibility with the original helper,
+	// but receipt IDs and vendor-specific values must not be truncated.
 	return
+}
+
+func findDeliveryReceiptFieldStart(s, field string) int {
+	if strings.HasPrefix(s, field) {
+		return 0
+	}
+	if n := strings.Index(s, " "+field); n >= 0 {
+		return n + 1
+	}
+	return -1
+}
+
+func nextDeliveryReceiptField(s string, start int) int {
+	next := -1
+	for _, field := range deliveryReceiptFields {
+		marker := " " + field + ":"
+		if idx := strings.Index(s[start:], marker); idx >= 0 {
+			idx += start
+			if next == -1 || idx < next {
+				next = idx
+			}
+		}
+	}
+	return next
 }

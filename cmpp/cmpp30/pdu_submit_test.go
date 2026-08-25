@@ -1,11 +1,16 @@
 package cmpp30
 
 import (
+	"errors"
+	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/hujm2023/go-sms-protocol/cmpp"
+	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
 var (
@@ -219,4 +224,45 @@ func (s *SubmitRespTestSuite) TestSubmitResp_GenEmptyResponse() {
 
 func TestSubmitResp(t *testing.T) {
 	suite.Run(t, new(SubmitRespTestSuite))
+}
+
+func TestSubmit_IEncodeFieldLengthError(t *testing.T) {
+	submit := &Submit{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandSubmit,
+			SequenceID: 1,
+		},
+		DestUsrTL:      1,
+		DestTerminalID: []string{strings.Repeat("x", 33)},
+	}
+
+	data, err := submit.IEncode()
+	if data != nil {
+		t.Fatalf("expected nil data on field length error, got %d bytes", len(data))
+	}
+	if err == nil {
+		t.Fatal("expected field length error")
+	}
+
+	var lengthErr *packet.FieldLengthError
+	if !errors.As(err, &lengthErr) {
+		t.Fatalf("errors.As(%T) did not expose FieldLengthError: %v", err, err)
+	}
+	assertSubmitFieldLengthError(t, err, lengthErr, "DestTerminalID[0]", 33, 32)
+}
+
+func assertSubmitFieldLengthError(t *testing.T, err error, lengthErr *packet.FieldLengthError, field string, actual, limit int) {
+	t.Helper()
+	if lengthErr == nil {
+		t.Fatal("expected non-nil FieldLengthError")
+	}
+	if lengthErr.Field != field || lengthErr.Actual != actual || lengthErr.Limit != limit {
+		t.Fatalf("unexpected FieldLengthError: %+v", lengthErr)
+	}
+	if !errors.Is(err, packet.ErrFieldLengthExceeded) {
+		t.Fatalf("errors.Is(%v, ErrFieldLengthExceeded) = false", err)
+	}
+	assert.Contains(t, err.Error(), `field "`+field+`"`)
+	assert.Contains(t, err.Error(), "actual length "+strconv.Itoa(actual))
+	assert.Contains(t, err.Error(), "limit "+strconv.Itoa(limit))
 }

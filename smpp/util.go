@@ -141,6 +141,13 @@ func ToValidatePeriod(now time.Time, v string, isRelative bool) (string, error) 
 	}
 
 	if isRelative {
+		// SMPP's relative format has no unambiguous representation for calendar
+		// months or years. Keep the existing day/hour/minute/second encoding for
+		// durations up to 30 days and reject longer durations instead of wrapping
+		// the day field back to zero.
+		if d > 30*24*time.Hour {
+			return "", fmt.Errorf("relative duration exceeds 30 days")
+		}
 		return timeToSMPPTimeFormatRelative(d), nil
 	}
 	return timeToSMPPTimeFormatAbsolute(now, now.Add(d)), nil
@@ -175,7 +182,7 @@ const (
 
 // timeToSMPPTimeFormatRelative 将时间t转为SMPP规定的时间格式——相对时间
 func timeToSMPPTimeFormatRelative(diff time.Duration) string {
-	days := int(diff.Hours()/24) % 31
+	days := int(diff.Hours() / 24)
 	hours := int(diff.Hours()) % 24
 	minutes := int(diff.Minutes()) % 60
 	seconds := int(diff.Seconds()) % 60

@@ -64,16 +64,16 @@ func (p *PduDeliver) IEncode() ([]byte, error) {
 
 	cmpp.WriteHeaderNoLength(p.Header, b)
 	b.WriteUint64(p.MsgID)
-	b.WriteFixedLenString(p.DestID, 21)
-	b.WriteFixedLenString(p.ServiceID, 10)
+	b.WriteFixedLenStringField("DestID", p.DestID, 21)
+	b.WriteFixedLenStringField("ServiceID", p.ServiceID, 10)
 	b.WriteUint8(p.TpPID)
 	b.WriteUint8(p.TpUDHI)
 	b.WriteUint8(p.MsgFmt)
-	b.WriteFixedLenString(p.SrcTerminalID, 21)
+	b.WriteFixedLenStringField("SrcTerminalID", p.SrcTerminalID, 21)
 	b.WriteUint8(p.RegisteredDeliver)
 	b.WriteUint8(p.MsgLength)
 	b.WriteBytes(p.MsgContent)
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 
 	return b.BytesWithLength()
 }

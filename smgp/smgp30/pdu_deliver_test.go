@@ -1,6 +1,7 @@
 package smgp30
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,6 +63,15 @@ func (s *DeliverTestSuite) TestDeliver_IDecode() {
 
 func TestDeliver(t *testing.T) {
 	suite.Run(t, new(DeliverTestSuite))
+}
+
+func TestDeliverRecvTimeFieldLengthError(t *testing.T) {
+	p := &Deliver{
+		Header:   smgp.Header{CommandID: smgp.CommandDeliver, SequenceID: 1},
+		RecvTime: strings.Repeat("r", 15),
+	}
+	_, err := p.IEncode()
+	requireFieldLengthError(t, err, "RecvTime", 15, 14)
 }
 
 type DeliverRespTestSuite struct {

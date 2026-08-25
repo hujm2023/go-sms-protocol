@@ -2,9 +2,33 @@ package packet
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 )
 
 var packetOrder = binary.BigEndian
+
+// ErrFieldLengthExceeded indicates that a field value is longer than the
+// limit accepted by a packet writer operation.
+var ErrFieldLengthExceeded = errors.New("field length exceeds limit")
+
+// FieldLengthError reports a field value whose byte length exceeds its limit.
+// Actual and Limit are measured in bytes (octets), not runes.
+type FieldLengthError struct {
+	Field  string
+	Actual int
+	Limit  int
+}
+
+// Error returns a safe description without including the field value.
+func (e *FieldLengthError) Error() string {
+	return fmt.Sprintf("field %q actual length %d exceeds limit %d (excess %d)", e.Field, e.Actual, e.Limit, e.Actual-e.Limit)
+}
+
+// Is reports whether the error is a field-length overflow.
+func (e *FieldLengthError) Is(target error) bool {
+	return target == ErrFieldLengthExceeded
+}
 
 type packetOptError struct {
 	err error

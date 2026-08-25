@@ -93,17 +93,17 @@ func (d *Deliver) IEncode() ([]byte, error) {
 
 	cmpp.WriteHeaderNoLength(d.Header, b)
 	b.WriteUint64(d.MsgID)
-	b.WriteFixedLenString(d.DestID, 21)
-	b.WriteFixedLenString(d.ServiceID, 10)
+	b.WriteFixedLenStringField("DestID", d.DestID, 21)
+	b.WriteFixedLenStringField("ServiceID", d.ServiceID, 10)
 	b.WriteUint8(d.TpPID)
 	b.WriteUint8(d.TpUDHI)
 	b.WriteUint8(d.MsgFmt)
-	b.WriteFixedLenString(d.SrcTerminalID, 32)
+	b.WriteFixedLenStringField("SrcTerminalID", d.SrcTerminalID, 32)
 	b.WriteUint8(d.SrcTerminalType)
 	b.WriteUint8(d.RegisteredDeliver)
 	b.WriteUint8(d.MsgLength)
 	b.WriteBytes(d.MsgContent)
-	b.WriteFixedLenString(d.LinkID, 20)
+	b.WriteFixedLenStringField("LinkID", d.LinkID, 20)
 
 	return b.BytesWithLength()
 }

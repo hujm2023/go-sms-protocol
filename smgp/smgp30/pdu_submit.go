@@ -2,6 +2,7 @@ package smgp30
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/samber/lo"
 
@@ -120,22 +121,22 @@ func (s *Submit) IEncode() ([]byte, error) {
 	b.WriteUint8(s.MsgType)
 	b.WriteUint8(s.NeedReport)
 	b.WriteUint8(s.Priority)
-	b.WriteFixedLenString(s.ServiceID, 10)
-	b.WriteFixedLenString(s.FeeType, 2)
-	b.WriteFixedLenString(s.FeeCode, 6)
-	b.WriteFixedLenString(s.FixedFee, 6)
+	b.WriteFixedLenStringField("ServiceID", s.ServiceID, 10)
+	b.WriteFixedLenStringField("FeeType", s.FeeType, 2)
+	b.WriteFixedLenStringField("FeeCode", s.FeeCode, 6)
+	b.WriteFixedLenStringField("FixedFee", s.FixedFee, 6)
 	b.WriteUint8(s.MsgFormat)
-	b.WriteFixedLenString(s.ValidTime, 17)
-	b.WriteFixedLenString(s.AtTime, 17)
-	b.WriteFixedLenString(s.SrcTermID, 21)
-	b.WriteFixedLenString(s.ChargeTermID, 21)
+	b.WriteFixedLenStringField("ValidTime", s.ValidTime, 17)
+	b.WriteFixedLenStringField("AtTime", s.AtTime, 17)
+	b.WriteFixedLenStringField("SrcTermID", s.SrcTermID, 21)
+	b.WriteFixedLenStringField("ChargeTermID", s.ChargeTermID, 21)
 	b.WriteUint8(s.DestTermIDCount)
-	for _, id := range s.DestTermID {
-		b.WriteFixedLenString(id, 21)
+	for i, id := range s.DestTermID {
+		b.WriteFixedLenStringField(fmt.Sprintf("DestTermID[%d]", i), id, 21)
 	}
 	b.WriteUint8(s.MsgLength)
 	b.WriteBytes(s.MsgContent)
-	b.WriteFixedLenString(s.Reserve, 8)
+	b.WriteFixedLenStringField("Reserve", s.Reserve, 8)
 	b.WriteBytes(s.Options.Serialize())
 
 	return b.BytesWithLength()

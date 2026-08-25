@@ -51,10 +51,10 @@ func (p *Report) IEncode() ([]byte, error) {
 	b.WriteUint32(p.SubmitSequence[1])
 	b.WriteUint32(p.SubmitSequence[2])
 	b.WriteUint8(p.ReportType)
-	b.WriteFixedLenString(p.UserNumber, 21)
+	b.WriteFixedLenStringField("UserNumber", p.UserNumber, 21)
 	b.WriteUint8(uint8(p.State))
 	b.WriteUint8(uint8(p.ErrorCode))
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 	return b.BytesWithLength()
 }
 
@@ -124,7 +124,7 @@ func (p *ReportResp) IEncode() ([]byte, error) {
 	defer b.Release()
 	sgip.WriteHeaderNoLength(p.Header, b)
 	b.WriteUint8(uint8(p.Result))
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 	return b.BytesWithLength()
 }
 

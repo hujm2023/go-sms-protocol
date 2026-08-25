@@ -1,6 +1,7 @@
 package smgp30
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -75,6 +76,16 @@ func (s *SubmitTestSuite) TestSubmit_IDecode() {
 
 func TestSubmit(t *testing.T) {
 	suite.Run(t, new(SubmitTestSuite))
+}
+
+func TestSubmitIndexedDestTermIDFieldLengthError(t *testing.T) {
+	p := &Submit{
+		Header:          smgp.Header{CommandID: smgp.CommandSubmit, SequenceID: 1},
+		DestTermIDCount: 1,
+		DestTermID:      []string{strings.Repeat("d", 22)},
+	}
+	_, err := p.IEncode()
+	requireFieldLengthError(t, err, "DestTermID[0]", 22, 21)
 }
 
 type SubmitRespTestSuite struct {

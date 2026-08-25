@@ -12,9 +12,11 @@ type CMDStatus uint32
 type CMDId uint32
 
 type Header struct {
-	Length   uint32
-	ID       CMDId
-	Status   CMDStatus
+	Length uint32
+	ID     CMDId
+	Status CMDStatus
+	// Sequence is an unsigned 4-octet wire value. SMPP 3.4 constrains normal
+	// PDUs to 1..0x7fffffff; concrete encoders and decoders enforce that domain.
 	Sequence uint32
 }
 

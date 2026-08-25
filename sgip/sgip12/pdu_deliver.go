@@ -41,14 +41,14 @@ func (p *Deliver) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	sgip.WriteHeaderNoLength(p.Header, b)
 	defer b.Release()
-	b.WriteFixedLenString(p.UserNumber, 21)
-	b.WriteFixedLenString(p.SPNumber, 21)
+	b.WriteFixedLenStringField("UserNumber", p.UserNumber, 21)
+	b.WriteFixedLenStringField("SPNumber", p.SPNumber, 21)
 	b.WriteUint8(p.TpPid)
 	b.WriteUint8(p.TpUdhi)
 	b.WriteUint8(p.MessageCoding)
 	b.WriteUint32(p.MessageLength)
 	b.WriteBytes(p.MessageContent)
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 
 	return b.BytesWithLength()
 }
@@ -121,7 +121,7 @@ func (p *DeliverResp) IEncode() ([]byte, error) {
 	defer b.Release()
 	sgip.WriteHeaderNoLength(p.Header, b)
 	b.WriteUint8(uint8(p.Result))
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 	return b.BytesWithLength()
 }
 

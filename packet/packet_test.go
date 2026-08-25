@@ -3,7 +3,10 @@ package packet
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -151,6 +154,120 @@ func TestPacketWriter_WriteNumeric(t *testing.T) {
 }
 
 func TestPacketError(t *testing.T) {
+	tests := []struct {
+		name    string
+		field   string
+		value   string
+		limit   int
+		wantLen int
+	}{
+		{name: "ascii", field: "source_addr", value: "secret", limit: 5, wantLen: 6},
+		{name: "multibyte octets", field: "服务", value: "短信", limit: 5, wantLen: 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := NewPacketWriter()
+			defer w.Release()
+
+			w.WriteFixedLenStringField(tt.field, tt.value, tt.limit)
+
+			err := w.Error()
+			if err == nil {
+				t.Fatal("WriteFixedLenStringField accepted an over-limit value")
+			}
+
+			var lengthErr *FieldLengthError
+			if !errors.As(err, &lengthErr) {
+				t.Fatalf("errors.As(%T) did not expose FieldLengthError: %v", err, err)
+			}
+			assert.Equal(t, tt.field, lengthErr.Field)
+			assert.Equal(t, tt.wantLen, lengthErr.Actual)
+			assert.Equal(t, tt.limit, lengthErr.Limit)
+			assert.ErrorIs(t, err, ErrFieldLengthExceeded)
+
+			fieldText := fmt.Sprintf("field %q", tt.field)
+			assert.Contains(t, lengthErr.Error(), fieldText)
+			assert.Contains(t, lengthErr.Error(), fmt.Sprintf("actual length %d", tt.wantLen))
+			assert.Contains(t, lengthErr.Error(), fmt.Sprintf("limit %d", tt.limit))
+			assert.Contains(t, lengthErr.Error(), fmt.Sprintf("excess %d", tt.wantLen-tt.limit))
+			assert.NotContains(t, lengthErr.Error(), tt.value)
+			assert.NotContains(t, err.Error(), tt.value)
+
+			data, bytesErr := w.Bytes()
+			assert.Nil(t, data)
+			assert.ErrorIs(t, bytesErr, ErrFieldLengthExceeded)
+		})
+	}
+
+	t.Run("below and exact limits preserve padding", func(t *testing.T) {
+		for _, tt := range []struct {
+			name  string
+			value string
+			want  []byte
+		}{
+			{name: "below", value: "ab", want: []byte{'a', 'b', 0, 0}},
+			{name: "exact", value: "abcd", want: []byte{'a', 'b', 'c', 'd'}},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				w := NewPacketWriter()
+				defer w.Release()
+
+				w.WriteFixedLenStringField("field", tt.value, 4)
+				assert.NoError(t, w.Error())
+
+				data, err := w.Bytes()
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, data)
+				assert.Equal(t, len(tt.want), w.Written())
+				assert.Equal(t, len(tt.want), w.Len())
+			})
+		}
+	})
+
+	t.Run("unnamed legacy method exposes typed overflow", func(t *testing.T) {
+		w := NewPacketWriter()
+		defer w.Release()
+
+		w.WriteFixedLenString("abcd", 3)
+
+		var lengthErr *FieldLengthError
+		if !errors.As(w.Error(), &lengthErr) {
+			t.Fatalf("errors.As did not expose FieldLengthError: %v", w.Error())
+		}
+		assert.Empty(t, lengthErr.Field)
+		assert.Equal(t, 4, lengthErr.Actual)
+		assert.Equal(t, 3, lengthErr.Limit)
+		assert.ErrorIs(t, w.Error(), ErrFieldLengthExceeded)
+	})
+
+	t.Run("first error remains sticky and deterministic", func(t *testing.T) {
+		w := NewPacketWriter()
+		defer w.Release()
+
+		w.WriteFixedLenStringField("first", "abcd", 3)
+		firstErr := w.Error()
+		if firstErr == nil {
+			t.Fatal("expected first write to fail")
+		}
+
+		w.WriteFixedLenStringField("second", "efgh", 3)
+		w.WriteUint32(1)
+		w.WriteBytes([]byte("later"))
+		w.WriteString("later")
+
+		assert.Same(t, firstErr, w.Error())
+		assert.Equal(t, 0, w.Written())
+		assert.Equal(t, 0, w.Len())
+		assert.Empty(t, w.HexString())
+
+		data, err := w.Bytes()
+		assert.Nil(t, data)
+		assert.Same(t, firstErr, err)
+		data, err = w.BytesWithLength()
+		assert.Nil(t, data)
+		assert.Same(t, firstErr, err)
+		assert.True(t, strings.Contains(err.Error(), `field "first"`))
+	})
 }
 
 func BenchmarkReader(bb *testing.B) {

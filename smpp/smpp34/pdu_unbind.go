@@ -1,6 +1,8 @@
 package smpp34
 
 import (
+	"fmt"
+
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/smpp"
@@ -11,23 +13,34 @@ type Unbind struct {
 }
 
 func (u *Unbind) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
+	header, err := smpp.ValidateDecodedPDU(data, smpp.UNBIND, false)
+	if err != nil {
+		return err
 	}
-	buf := packet.NewPacketReader(data)
-	defer buf.Release()
-
-	u.Header = smpp.ReadHeader(buf)
-	return buf.Error()
+	if len(data) != smpp.MinSMPPPacketLen {
+		return fmt.Errorf("unbind must not contain a body")
+	}
+	if err := smpp.ValidateRequestHeader(header, smpp.UNBIND); err != nil {
+		return err
+	}
+	u.Header = header
+	return nil
 }
 
 func (u *Unbind) IEncode() ([]byte, error) {
+	if err := smpp.ValidateRequestHeader(u.Header, smpp.UNBIND); err != nil {
+		return nil, err
+	}
 	buf := packet.NewPacketWriter(0)
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(u.Header, buf)
 
-	return buf.BytesWithLength()
+	data, err := buf.BytesWithLength()
+	if err != nil {
+		return nil, err
+	}
+	return data, smpp.ValidateEncodedPDU(data)
 }
 
 func (u *Unbind) SetSequenceID(id uint32) {
@@ -56,24 +69,34 @@ type UnBindResp struct {
 }
 
 func (u *UnBindResp) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
+	header, err := smpp.ValidateDecodedPDU(data, smpp.UNBIND_RESP, false)
+	if err != nil {
+		return err
 	}
-
-	buf := packet.NewPacketReader(data)
-	defer buf.Release()
-
-	u.Header = smpp.ReadHeader(buf)
-	return buf.Error()
+	if len(data) != smpp.MinSMPPPacketLen {
+		return fmt.Errorf("unbind_resp must not contain a body")
+	}
+	if err := smpp.ValidateResponseHeader(header, smpp.UNBIND_RESP); err != nil {
+		return err
+	}
+	u.Header = header
+	return nil
 }
 
 func (u *UnBindResp) IEncode() ([]byte, error) {
+	if err := smpp.ValidateResponseHeader(u.Header, smpp.UNBIND_RESP); err != nil {
+		return nil, err
+	}
 	buf := packet.NewPacketWriter(0)
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(u.Header, buf)
 
-	return buf.BytesWithLength()
+	data, err := buf.BytesWithLength()
+	if err != nil {
+		return nil, err
+	}
+	return data, smpp.ValidateEncodedPDU(data)
 }
 
 func (u *UnBindResp) SetSequenceID(id uint32) {

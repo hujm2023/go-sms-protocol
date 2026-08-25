@@ -174,3 +174,97 @@ func (b *BindRespTestSuite) TestBindResp_GenEmptyResponse() {
 func TestBindResp(t *testing.T) {
 	suite.Run(t, new(BindRespTestSuite))
 }
+
+func TestBindCommandRouting(t *testing.T) {
+	tests := []struct {
+		name       string
+		requestID  smpp.CMDId
+		responseID smpp.CMDId
+		sequenceID uint32
+	}{
+		{
+			name:       "receiver",
+			requestID:  smpp.BIND_RECEIVER,
+			responseID: smpp.BIND_RECEIVER_RESP,
+			sequenceID: 1,
+		},
+		{
+			name:       "transmitter",
+			requestID:  smpp.BIND_TRANSMITTER,
+			responseID: smpp.BIND_TRANSMITTER_RESP,
+			sequenceID: 2,
+		},
+		{
+			name:       "transceiver",
+			requestID:  smpp.BIND_TRANSCEIVER,
+			responseID: smpp.BIND_TRANSCEIVER_RESP,
+			sequenceID: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bind := &Bind{Header: smpp.Header{ID: tt.requestID, Sequence: tt.sequenceID}}
+			assert.Equal(t, tt.requestID, bind.GetCommand())
+
+			response, ok := bind.GenEmptyResponse().(*BindResp)
+			if !assert.True(t, ok) {
+				return
+			}
+			assert.Equal(t, tt.responseID, response.Header.ID)
+			assert.Equal(t, tt.sequenceID, response.GetSequenceID())
+			assert.Equal(t, tt.responseID, response.GetCommand())
+		})
+	}
+}
+
+func TestBindCommandRoutingUnknownID(t *testing.T) {
+	bind := &Bind{Header: smpp.Header{ID: smpp.CMDId(0x7fffffff)}}
+	assert.Nil(t, bind.GetCommand())
+	assert.Nil(t, bind.GenEmptyResponse())
+
+	bindResp := &BindResp{Header: smpp.Header{ID: smpp.CMDId(0x7fffffff)}}
+	assert.Nil(t, bindResp.GetCommand())
+}
+
+func TestBindRespErrorHeaderOnly(t *testing.T) {
+	bindResp := BindResp{
+		Header: smpp.Header{
+			ID:       smpp.BIND_RECEIVER_RESP,
+			Status:   smpp.ESME_RINVPASWD,
+			Sequence: 9,
+		},
+		SystemID: "must not be encoded",
+	}
+	bindResp.TLVs.SetTLV(smpp.NewTLV(smpp.SC_INTERFACE_VERSION, []byte{52}))
+
+	data, err := bindResp.IEncode()
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{
+		0, 0, 0, 16,
+		128, 0, 0, 1,
+		0, 0, 0, 14,
+		0, 0, 0, 9,
+	}, data)
+
+	decoded := new(BindResp)
+	assert.NoError(t, decoded.IDecode(data))
+	assert.Equal(t, smpp.BIND_RECEIVER_RESP, decoded.Header.ID)
+	assert.Equal(t, smpp.ESME_RINVPASWD, decoded.Header.Status)
+	assert.Equal(t, uint32(9), decoded.Header.Sequence)
+	assert.Empty(t, decoded.SystemID)
+	assert.Empty(t, decoded.TLVs)
+}
+
+func TestBindRespErrorRejectsTrailingBody(t *testing.T) {
+	bindResp := BindResp{Header: smpp.Header{
+		ID:       smpp.BIND_TRANSCEIVER_RESP,
+		Status:   smpp.ESME_RBINDFAIL,
+		Sequence: 10,
+	}}
+	data, err := bindResp.IEncode()
+	assert.NoError(t, err)
+
+	data = append(data, 0)
+	assert.Error(t, new(BindResp).IDecode(data))
+}

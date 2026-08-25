@@ -48,8 +48,8 @@ func (p *Login) IEncode() ([]byte, error) {
 	defer buf.Release()
 
 	smgp.WriteHeaderNoLength(p.Header, buf)
-	buf.WriteFixedLenString(p.ClientID, 8)
-	buf.WriteFixedLenString(p.AuthenticatorClient, 16)
+	buf.WriteFixedLenStringField("ClientID", p.ClientID, 8)
+	buf.WriteFixedLenStringField("AuthenticatorClient", p.AuthenticatorClient, 16)
 	buf.WriteUint8(p.LoginMode)
 	buf.WriteUint32(p.Timestamp)
 	buf.WriteUint8(p.Version)
@@ -123,7 +123,7 @@ func (c *LoginResp) IEncode() ([]byte, error) {
 
 	smgp.WriteHeaderNoLength(c.Header, buf)
 	buf.WriteUint32(uint32(c.Status))
-	buf.WriteFixedLenString(c.AuthenticatorServer, 16)
+	buf.WriteFixedLenStringField("AuthenticatorServer", c.AuthenticatorServer, 16)
 	buf.WriteUint8(c.ServerVersion)
 
 	return buf.BytesWithLength()
