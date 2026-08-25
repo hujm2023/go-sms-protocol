@@ -2,136 +2,243 @@ package nioserver
 
 import (
 	"context"
+	"errors"
 	"io"
+	"math"
+	"strconv"
+	"sync"
 	"sync/atomic"
 
 	"github.com/cloudwego/netpoll"
-	"github.com/cloudwego/netpoll/mux"
 )
 
-// IActiveTest defines the interface for connection active testing.
+// IActiveTest defines the active-test state maintained for a connection.
 type IActiveTest interface {
-	// OnReceiveActiveTest resets the counter upon receiving an active test response.
+	// OnSendActiveTest records a sent active-test request.
+	OnSendActiveTest()
+	// OnReceiveActiveTest resets the counter after an active-test response.
 	OnReceiveActiveTest()
-	// NoActiveTestCount returns the count of consecutive missed active test responses.
+	// NoActiveTestCount returns the number of consecutive unanswered requests.
 	NoActiveTestCount() int
 }
 
-// ISMSConn defines the interface for an SMS protocol connection with generic business data.
+// ISMSConn defines an SMS protocol connection with generic business data.
+//
+// GetBizData and SetBizData synchronize replacement of the value itself. They
+// do not make maps, slices, pointers, or other mutable objects stored in T safe
+// for concurrent use.
 type ISMSConn[T any] interface {
 	IActiveTest
-
 	io.Closer
 
-	// AsyncWrite writes data to the peer asynchronously.
+	// Write serializes and flushes data to the peer. The caller may reuse data
+	// after Write returns.
+	Write(ctx context.Context, data []byte) error
+	// WriteAndClose flushes data before closing the connection.
+	WriteAndClose(ctx context.Context, data []byte) error
+
+	// AsyncWrite is retained for source compatibility.
+	// Deprecated: use Write and handle the returned error.
 	AsyncWrite(ctx context.Context, data []byte)
 
-	// RemoteAddr returns the remote network address.
+	// RemoteAddr returns the cached remote network address.
 	RemoteAddr() string
-
-	// NextSequenceID returns the next available message sequence ID for this connection.
+	// NextSequenceID returns the next non-zero outbound sequence ID.
 	NextSequenceID() uint32
 
-	// GetBizData gets the business data associated with this connection.
+	// GetBizData returns the business data associated with this connection.
 	GetBizData() T
-	// SetBizData sets the business data associated with this connection.
+	// SetBizData replaces the business data associated with this connection.
 	SetBizData(data T)
 }
 
-// connkey is a private type for context key to avoid collisions.
-type connkey struct{}
+// connKey is private to prevent context-key collisions.
+type connKey struct{}
 
-// ctxkey is the context key for storing ISMSConn.
-var ctxkey connkey
+var ctxKey connKey
 
-// muxConn implements ISMSConn based on netpoll and mux.
-// It manages connection state, write queue, sequence ID, and business data.
+// muxConn is the connection-scoped session used by BaseServer. Despite the
+// historical name, writes are no longer owned by netpoll/mux.ShardQueue.
 type muxConn[T any] struct {
-	conn          netpoll.Connection
-	wqueue        *mux.ShardQueue // Sharded queue for write operations
-	sequenceIDGen uint32          // Sequence ID generator
-	noActiveTest  uint32          // Counter for missed active test responses
-	remoteAddr    string          // Cached remote address string
-	bizData       atomic.Value    // Stores business data of type T atomically
+	conn        netpoll.Connection
+	server      *BaseServer[T]
+	writer      *serialWriter
+	handlerGate *admissionGate
+
+	ctx    context.Context
+	cancel context.CancelCauseFunc
+
+	closeOnce          sync.Once
+	transportCloseOnce sync.Once
+	cleanupDone        chan struct{}
+
+	sequenceIDGen atomic.Uint32
+	noActiveTest  atomic.Uint32
+	remoteAddr    string
+
+	bizMu   sync.RWMutex
+	bizData T
 }
 
-// newSvrMuxConn creates a new server-side muxConn instance.
-func newSvrMuxConn[T any](conn netpoll.Connection) *muxConn[T] {
-	mc := &muxConn[T]{}
-	mc.conn = conn
-	mc.remoteAddr = conn.RemoteAddr().String()
-	mc.wqueue = mux.NewShardQueue(mux.ShardSize, conn)
-	mc.sequenceIDGen = 0
-	mc.noActiveTest = 0
-	// Initialize bizData with the zero value of T to prevent panic on Load.
-	var zero T
-	mc.bizData.Store(zero)
+// newSvrMuxConn creates a server-side connection session. The caller must
+// register the transport close bridge before exposing the returned session.
+func newSvrMuxConn[T any](conn netpoll.Connection, server *BaseServer[T]) *muxConn[T] {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	mc := &muxConn[T]{
+		conn:        conn,
+		server:      server,
+		ctx:         ctx,
+		cancel:      cancel,
+		cleanupDone: make(chan struct{}),
+		handlerGate: newAdmissionGate(server.maxHandlersPerConn),
+	}
+	if addr := conn.RemoteAddr(); addr != nil {
+		mc.remoteAddr = addr.String()
+	}
+	mc.writer = newSerialWriter(server.maxPendingWrites, mc.flush)
 	return mc
 }
 
-// AsyncWrite adds data to the write queue for asynchronous sending via netpoll mux.
+func (m *muxConn[T]) flush(data []byte) error {
+	if !m.conn.IsActive() {
+		return ErrConnectionClosed
+	}
+	w := m.conn.Writer()
+	buf, err := w.Malloc(len(data))
+	if err != nil {
+		return err
+	}
+	copy(buf, data)
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Write copies, serializes, and flushes data through the connection writer.
+func (m *muxConn[T]) Write(ctx context.Context, data []byte) error {
+	return m.writer.Write(ctx, data)
+}
+
+// WriteAndClose flushes data before beginning the common close path.
+func (m *muxConn[T]) WriteAndClose(ctx context.Context, data []byte) error {
+	writeErr := m.Write(ctx, data)
+	closeErr := m.Close()
+	return errors.Join(writeErr, closeErr)
+}
+
+// AsyncWrite preserves the old API while routing through the safe writer.
+// Deprecated: use Write and handle the returned error.
 func (m *muxConn[T]) AsyncWrite(ctx context.Context, data []byte) {
-	m.wqueue.Add(func() (buf netpoll.Writer, isNil bool) {
-		w := netpoll.NewLinkBuffer(0)
-		_, _ = w.WriteBinary(data)
-		return w, false
-	})
+	if err := m.Write(ctx, data); err != nil {
+		m.server.logger.CtxErrorf(ctx, "write response error: %v", err)
+	}
 }
 
 func (m *muxConn[T]) RemoteAddr() string {
 	return m.remoteAddr
 }
 
-// NextSequenceID atomically increments and returns the next message sequence ID.
-// It wraps around to 1 after reaching the max uint32 value (skipping 0).
+// NextSequenceID atomically returns the next non-zero sequence ID.
 func (m *muxConn[T]) NextSequenceID() uint32 {
-	n := atomic.AddUint32(&m.sequenceIDGen, 1)
+	n := m.sequenceIDGen.Add(1)
 	if n == 0 {
-		n = atomic.AddUint32(&m.sequenceIDGen, 1)
+		n = m.sequenceIDGen.Add(1)
 	}
 	return n
 }
 
-// GetBizData atomically loads and returns the business data associated with the connection.
-// Returns the zero value of T if the stored value is not of type T (e.g., not set yet).
 func (m *muxConn[T]) GetBizData() T {
-	v := m.bizData.Load()
-	if data, ok := v.(T); ok {
-		return data
-	}
-	// If type assertion fails, return the zero value of T.
-	var zero T
-	return zero
+	m.bizMu.RLock()
+	defer m.bizMu.RUnlock()
+	return m.bizData
 }
 
-// SetBizData atomically stores the business data associated with the connection.
 func (m *muxConn[T]) SetBizData(data T) {
-	m.bizData.Store(data)
+	m.bizMu.Lock()
+	m.bizData = data
+	m.bizMu.Unlock()
 }
 
-// NoActiveTestCount atomically increments and returns the count of consecutive missed active test responses.
+// OnSendActiveTest increments the missed-response count and saturates at
+// math.MaxUint32 so overflow never makes an unhealthy connection look healthy.
+func (m *muxConn[T]) OnSendActiveTest() {
+	limit := maxActiveTestCount()
+	for {
+		current := m.noActiveTest.Load()
+		if current == limit {
+			return
+		}
+		if m.noActiveTest.CompareAndSwap(current, current+1) {
+			return
+		}
+	}
+}
+
+func maxActiveTestCount() uint32 {
+	if strconv.IntSize == 32 {
+		return math.MaxInt32
+	}
+	return math.MaxUint32
+}
+
 func (m *muxConn[T]) NoActiveTestCount() int {
-	return int(atomic.LoadUint32(&m.noActiveTest))
+	return int(m.noActiveTest.Load())
 }
 
-// OnReceiveActiveTest atomically resets the missed active test response counter to 0.
 func (m *muxConn[T]) OnReceiveActiveTest() {
-	// Reset to 0
-	atomic.StoreUint32(&m.noActiveTest, 0)
+	m.noActiveTest.Store(0)
+}
+
+// beginClose is phase A. It is deliberately constant-time and safe to invoke
+// from netpoll's CloseCallback chain.
+func (m *muxConn[T]) beginClose(cause error) {
+	if cause == nil {
+		cause = ErrConnectionClosed
+	}
+	m.closeOnce.Do(func() {
+		m.handlerGate.Close()
+		m.writer.BeginStop()
+		m.cancel(cause)
+	})
+}
+
+// transportClosed schedules phase B exactly once. It never runs user code on
+// the netpoll callback goroutine.
+func (m *muxConn[T]) transportClosed(cause error) {
+	m.beginClose(cause)
+	m.transportCloseOnce.Do(func() {
+		m.server.scheduleCleanup(m)
+	})
+}
+
+func (m *muxConn[T]) closeWithCause(cause error) error {
+	m.beginClose(cause)
+	err := m.conn.Close()
+	// netpoll may defer CloseCallback while OnRequest holds its processing
+	// lock. Phase B must not depend on that callback running promptly.
+	m.transportClosed(cause)
+	return err
 }
 
 func (m *muxConn[T]) Close() error {
-	// _ = m.wqueue.Close() // wqueue will be closed by BaseServer.OnCloseConn
-	return m.conn.Close()
+	return m.closeWithCause(ErrConnectionClosed)
 }
 
-// fillCtx adds the ISMSConn instance to the context.
+func (m *muxConn[T]) connectionContext() context.Context {
+	return m.ctx
+}
+
+// fillCtx adds the connection session to ctx.
 func fillCtx[T any](ctx context.Context, conn ISMSConn[T]) context.Context {
-	return context.WithValue(ctx, ctxkey, conn)
+	return context.WithValue(ctx, ctxKey, conn)
 }
 
-// GetCtxConn extracts the ISMSConn instance from the context.
+// GetCtxConn extracts the connection session from ctx.
 func GetCtxConn[T any](ctx context.Context) (ISMSConn[T], bool) {
-	conn, ok := ctx.Value(ctxkey).(ISMSConn[T])
+	if ctx == nil {
+		return nil, false
+	}
+	conn, ok := ctx.Value(ctxKey).(ISMSConn[T])
 	return conn, ok
 }
