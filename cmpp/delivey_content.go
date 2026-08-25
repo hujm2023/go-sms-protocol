@@ -38,10 +38,10 @@ func (s *SubPduDeliveryContent) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	b.WriteUint64(s.MsgID)
-	b.WriteFixedLenString(s.Stat, 7)
-	b.WriteFixedLenString(s.SubmitTime, 10)
-	b.WriteFixedLenString(s.DoneTime, 10)
-	b.WriteFixedLenString(s.DestTerminalID, 21)
+	b.WriteFixedLenStringField("Stat", s.Stat, 7)
+	b.WriteFixedLenStringField("SubmitTime", s.SubmitTime, 10)
+	b.WriteFixedLenStringField("DoneTime", s.DoneTime, 10)
+	b.WriteFixedLenStringField("DestTerminalID", s.DestTerminalID, 21)
 	b.WriteUint32(s.SMSCSequence)
 
 	return b.Bytes()

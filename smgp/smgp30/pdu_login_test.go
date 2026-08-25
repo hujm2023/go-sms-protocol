@@ -1,13 +1,47 @@
 package smgp30
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/smgp"
 )
+
+func requireFieldLengthError(t *testing.T, err error, field string, actual, limit int) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected field length error")
+	}
+
+	var lengthErr *packet.FieldLengthError
+	if !errors.As(err, &lengthErr) {
+		t.Fatalf("errors.As did not expose FieldLengthError: %v", err)
+	}
+	if !errors.Is(err, packet.ErrFieldLengthExceeded) {
+		t.Fatalf("errors.Is did not expose ErrFieldLengthExceeded: %v", err)
+	}
+	if lengthErr.Field != field || lengthErr.Actual != actual || lengthErr.Limit != limit {
+		t.Fatalf("FieldLengthError = %+v, want field=%q actual=%d limit=%d", lengthErr, field, actual, limit)
+	}
+
+	for _, want := range []string{
+		"WriteFixedLenStringField write error",
+		fmt.Sprintf("field %q", field),
+		fmt.Sprintf("actual length %d", actual),
+		fmt.Sprintf("limit %d", limit),
+		fmt.Sprintf("excess %d", actual-limit),
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q missing %q", err, want)
+		}
+	}
+}
 
 type LoginTestSuite struct {
 	suite.Suite
@@ -47,6 +81,15 @@ func (s *LoginTestSuite) TestLogin_IEncode() {
 	au, err := genAuthenticatorClient("testid", "testauth", genTimestampForTest())
 	s.Nil(err)
 	s.Equal(string(au), c.AuthenticatorClient)
+}
+
+func TestLoginFieldLengthError(t *testing.T) {
+	p := &Login{
+		Header:   smgp.Header{CommandID: smgp.CommandLogin, SequenceID: 1},
+		ClientID: strings.Repeat("c", 9),
+	}
+	_, err := p.IEncode()
+	requireFieldLengthError(t, err, "ClientID", 9, 8)
 }
 
 func TestLogin(t *testing.T) {

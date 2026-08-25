@@ -30,8 +30,8 @@ func (p *PduConnect) IEncode() ([]byte, error) {
 	defer buf.Release()
 
 	cmpp.WriteHeaderNoLength(p.Header, buf)
-	buf.WriteFixedLenString(p.SourceAddr, 6)
-	buf.WriteFixedLenString(p.AuthenticatorSource, 16)
+	buf.WriteFixedLenStringField("SourceAddr", p.SourceAddr, 6)
+	buf.WriteFixedLenStringField("AuthenticatorSource", p.AuthenticatorSource, 16)
 	buf.WriteUint8(p.Version)
 	buf.WriteUint32(p.Timestamp)
 
@@ -119,7 +119,7 @@ func (pr *PduConnectResp) IEncode() ([]byte, error) {
 
 	cmpp.WriteHeaderNoLength(pr.Header, buf)
 	buf.WriteUint8(uint8(pr.Status))
-	buf.WriteFixedLenString(pr.AuthenticatorISMG, 16)
+	buf.WriteFixedLenStringField("AuthenticatorISMG", pr.AuthenticatorISMG, 16)
 	buf.WriteUint8(pr.Version)
 
 	return buf.BytesWithLength()

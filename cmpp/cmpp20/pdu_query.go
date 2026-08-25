@@ -30,10 +30,10 @@ func (p *PduQuery) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	cmpp.WriteHeaderNoLength(p.Header, b)
-	b.WriteFixedLenString(p.Time, 8)
+	b.WriteFixedLenStringField("Time", p.Time, 8)
 	b.WriteUint8(p.QueryType)
-	b.WriteFixedLenString(p.QueryCode, 10)
-	b.WriteFixedLenString(p.Reserve, 8)
+	b.WriteFixedLenStringField("QueryCode", p.QueryCode, 10)
+	b.WriteFixedLenStringField("Reserve", p.Reserve, 8)
 
 	return b.BytesWithLength()
 }
@@ -138,9 +138,9 @@ func (p *PduQueryResp) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	cmpp.WriteHeaderNoLength(p.Header, b)
-	b.WriteFixedLenString(p.Time, 8)
+	b.WriteFixedLenStringField("Time", p.Time, 8)
 	b.WriteUint8(p.QueryType)
-	b.WriteFixedLenString(p.QueryCode, 10)
+	b.WriteFixedLenStringField("QueryCode", p.QueryCode, 10)
 	b.WriteUint32(p.MtTLMsg)
 	b.WriteUint32(p.MtTlUsr)
 	b.WriteUint32(p.MtScs)

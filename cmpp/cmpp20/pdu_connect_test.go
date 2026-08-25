@@ -2,11 +2,13 @@ package cmpp20
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hujm2023/go-sms-protocol/cmpp"
+	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
 func TestPduConnect(t *testing.T) {
@@ -45,4 +47,32 @@ func TestPduConnectResp(t *testing.T) {
 	assert.Equal(t, "", c.AuthenticatorISMG)
 	assert.Equal(t, uint8(0), c.Version)
 	t.Log(c.String())
+}
+
+func TestPduConnect_IEncodeFieldLengthError(t *testing.T) {
+	c := &PduConnect{
+		Header: cmpp.Header{
+			CommandID:  cmpp.CommandConnect,
+			SequenceID: 1,
+		},
+		SourceAddr: "1234567",
+	}
+
+	data, err := c.IEncode()
+	assert.Nil(t, data)
+	if !assert.Error(t, err) {
+		return
+	}
+
+	var lengthErr *packet.FieldLengthError
+	if !errors.As(err, &lengthErr) {
+		t.Fatalf("errors.As(%T) did not expose FieldLengthError: %v", err, err)
+	}
+	assert.Equal(t, "SourceAddr", lengthErr.Field)
+	assert.Equal(t, 7, lengthErr.Actual)
+	assert.Equal(t, 6, lengthErr.Limit)
+	assert.ErrorIs(t, err, packet.ErrFieldLengthExceeded)
+	assert.Contains(t, err.Error(), `field "SourceAddr"`)
+	assert.Contains(t, err.Error(), "actual length 7")
+	assert.Contains(t, err.Error(), "limit 6")
 }

@@ -1,6 +1,8 @@
 package cmpp30
 
 import (
+	"fmt"
+
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/packet"
@@ -148,27 +150,27 @@ func (s *Submit) IEncode() ([]byte, error) {
 	b.WriteUint8(s.PkNumber)
 	b.WriteUint8(s.RegisteredDelivery)
 	b.WriteUint8(s.MsgLevel)
-	b.WriteFixedLenString(s.ServiceID, 10)
+	b.WriteFixedLenStringField("ServiceID", s.ServiceID, 10)
 	b.WriteUint8(s.FeeUserType)
-	b.WriteFixedLenString(s.FeeTerminalID, 32)
+	b.WriteFixedLenStringField("FeeTerminalID", s.FeeTerminalID, 32)
 	b.WriteUint8(s.FeeTerminalType)
 	b.WriteUint8(s.TpPID)
 	b.WriteUint8(s.TpUDHI)
 	b.WriteUint8(s.MsgFmt)
-	b.WriteFixedLenString(s.MsgSrc, 6)
-	b.WriteFixedLenString(s.FeeType, 2)
-	b.WriteFixedLenString(s.FeeCode, 6)
-	b.WriteFixedLenString(s.ValiDTime, 17)
-	b.WriteFixedLenString(s.AtTime, 17)
-	b.WriteFixedLenString(s.SrcID, 21)
+	b.WriteFixedLenStringField("MsgSrc", s.MsgSrc, 6)
+	b.WriteFixedLenStringField("FeeType", s.FeeType, 2)
+	b.WriteFixedLenStringField("FeeCode", s.FeeCode, 6)
+	b.WriteFixedLenStringField("ValiDTime", s.ValiDTime, 17)
+	b.WriteFixedLenStringField("AtTime", s.AtTime, 17)
+	b.WriteFixedLenStringField("SrcID", s.SrcID, 21)
 	b.WriteUint8(s.DestUsrTL)
-	for _, id := range s.DestTerminalID {
-		b.WriteFixedLenString(id, 32)
+	for i, id := range s.DestTerminalID {
+		b.WriteFixedLenStringField(fmt.Sprintf("DestTerminalID[%d]", i), id, 32)
 	}
 	b.WriteUint8(s.DestTerminalType)
 	b.WriteUint8(s.MsgLength)
 	b.WriteBytes(s.MsgContent)
-	b.WriteFixedLenString(s.LinkID, 20)
+	b.WriteFixedLenStringField("LinkID", s.LinkID, 20)
 
 	return b.BytesWithLength()
 }

@@ -49,10 +49,10 @@ func (q *Query) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	cmpp.WriteHeaderNoLength(q.Header, b)
-	b.WriteFixedLenString(q.Time, 8)
+	b.WriteFixedLenStringField("Time", q.Time, 8)
 	b.WriteUint8(q.QueryType)
-	b.WriteFixedLenString(q.QueryCode, 10)
-	b.WriteFixedLenString(q.Reserve, 8)
+	b.WriteFixedLenStringField("QueryCode", q.QueryCode, 10)
+	b.WriteFixedLenStringField("Reserve", q.Reserve, 8)
 
 	return b.BytesWithLength()
 }
@@ -172,9 +172,9 @@ func (q *QueryResp) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	cmpp.WriteHeaderNoLength(q.Header, b)
-	b.WriteFixedLenString(q.Time, 8)
+	b.WriteFixedLenStringField("Time", q.Time, 8)
 	b.WriteUint8(q.QueryType)
-	b.WriteFixedLenString(q.QueryCode, 10)
+	b.WriteFixedLenStringField("QueryCode", q.QueryCode, 10)
 	b.WriteUint32(q.MtTLMsg)
 	b.WriteUint32(q.MtTlUsr)
 	b.WriteUint32(q.MtScs)

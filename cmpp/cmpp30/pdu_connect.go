@@ -47,8 +47,8 @@ func (p *Connect) IEncode() ([]byte, error) {
 	defer buf.Release()
 
 	cmpp.WriteHeaderNoLength(p.Header, buf)
-	buf.WriteFixedLenString(p.SourceAddr, 6)
-	buf.WriteFixedLenString(p.AuthenticatorSource, 16)
+	buf.WriteFixedLenStringField("SourceAddr", p.SourceAddr, 6)
+	buf.WriteFixedLenStringField("AuthenticatorSource", p.AuthenticatorSource, 16)
 	buf.WriteUint8(p.Version)
 	buf.WriteUint32(p.Timestamp)
 
@@ -136,7 +136,7 @@ func (c *ConnectResp) IEncode() ([]byte, error) {
 
 	cmpp.WriteHeaderNoLength(c.Header, buf)
 	buf.WriteUint32(c.Status)
-	buf.WriteFixedLenString(c.AuthenticatorISMG, 16)
+	buf.WriteFixedLenStringField("AuthenticatorISMG", c.AuthenticatorISMG, 16)
 	buf.WriteUint8(c.Version)
 
 	return buf.BytesWithLength()

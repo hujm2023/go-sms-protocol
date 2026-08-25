@@ -43,9 +43,9 @@ func (p *Bind) IEncode() ([]byte, error) {
 	defer b.Release()
 	sgip.WriteHeaderNoLength(p.Header, b)
 	b.WriteUint8(uint8(p.Type))
-	b.WriteFixedLenString(p.Name, 16)
-	b.WriteFixedLenString(p.Password, 16)
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Name", p.Name, 16)
+	b.WriteFixedLenStringField("Password", p.Password, 16)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 	return b.BytesWithLength()
 }
 
@@ -95,7 +95,7 @@ func (p *BindResp) IEncode() ([]byte, error) {
 	defer b.Release()
 	sgip.WriteHeaderNoLength(p.Header, b)
 	b.WriteUint8(uint8(p.Result))
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 	return b.BytesWithLength()
 }
 

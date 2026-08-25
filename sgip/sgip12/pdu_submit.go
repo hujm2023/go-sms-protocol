@@ -1,6 +1,8 @@
 package sgip12
 
 import (
+	"fmt"
+
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/sgip"
@@ -151,8 +153,8 @@ func (p *Submit) IEncode() ([]byte, error) {
 	b := packet.NewPacketWriter()
 	defer b.Release()
 	sgip.WriteHeaderNoLength(p.Header, b)
-	b.WriteFixedLenString(p.SpNumber, 21)
-	b.WriteFixedLenString(p.ChargeNumber, 21)
+	b.WriteFixedLenStringField("SpNumber", p.SpNumber, 21)
+	b.WriteFixedLenStringField("ChargeNumber", p.ChargeNumber, 21)
 	// 纠正一下可能才出现的 userCount 和 len(UserNumber)可能不一致的小问题
 	if len(p.UserNumber) != int(p.UserCount) {
 		p.UserCount = uint8(len(p.UserNumber))
@@ -160,18 +162,18 @@ func (p *Submit) IEncode() ([]byte, error) {
 	b.WriteUint8(p.UserCount)
 	// serialize UserNumber
 	for i := 0; i < int(p.UserCount); i++ {
-		b.WriteFixedLenString(p.UserNumber[i], 21)
+		b.WriteFixedLenStringField(fmt.Sprintf("UserNumber[%d]", i), p.UserNumber[i], 21)
 	}
-	b.WriteFixedLenString(p.CorpID, 5)
-	b.WriteFixedLenString(p.ServiceType, 10)
+	b.WriteFixedLenStringField("CorpID", p.CorpID, 5)
+	b.WriteFixedLenStringField("ServiceType", p.ServiceType, 10)
 	b.WriteUint8(p.FeeType)
-	b.WriteFixedLenString(p.FeeValue, 6)
-	b.WriteFixedLenString(p.GivenValue, 6)
+	b.WriteFixedLenStringField("FeeValue", p.FeeValue, 6)
+	b.WriteFixedLenStringField("GivenValue", p.GivenValue, 6)
 	b.WriteUint8(p.AgentFlag)
 	b.WriteUint8(p.MorelatetoMTFlag)
 	b.WriteUint8(p.Priority)
-	b.WriteFixedLenString(p.ExpireTime, 16)
-	b.WriteFixedLenString(p.ScheduleTime, 16)
+	b.WriteFixedLenStringField("ExpireTime", p.ExpireTime, 16)
+	b.WriteFixedLenStringField("ScheduleTime", p.ScheduleTime, 16)
 	b.WriteUint8(p.ReportFlag)
 	b.WriteUint8(p.TpPid)
 	b.WriteUint8(p.TpUdhi)
@@ -179,7 +181,7 @@ func (p *Submit) IEncode() ([]byte, error) {
 	b.WriteUint8(p.MessageType)
 	b.WriteUint32(p.MessageLength)
 	b.WriteBytes(p.MessageContent)
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 
 	return b.BytesWithLength()
 }
@@ -246,7 +248,7 @@ func (p *SubmitResp) IEncode() ([]byte, error) {
 	defer b.Release()
 	sgip.WriteHeaderNoLength(p.Header, b)
 	b.WriteUint8(uint8(p.Result))
-	b.WriteFixedLenString(p.Reserved, 8)
+	b.WriteFixedLenStringField("Reserved", p.Reserved, 8)
 	return b.BytesWithLength()
 }
 
