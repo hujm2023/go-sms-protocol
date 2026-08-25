@@ -27,7 +27,7 @@ func (s *DeliverSmTestSuite) SetupTest() {
 	s.msgID = "7a44aaba-336f-4a92-9502-dd106aa7369f"
 
 	s.valueBytes = []byte{
-		0, 0, 0, 223, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 98, 100, 0, 1, 1, 57, 49, 57, 56, 48, 48, 48, 48, 48, 50, 56, 53, 0, 1, 1, 83, 72, 65, 65, 68, 73, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 132, 105, 100, 58, 55, 97, 52, 52, 97, 97, 98, 97, 45, 51, 51, 54, 102, 45, 52, 97, 57, 50, 45, 57, 53, 48, 50, 45, 100, 100, 49, 48, 54, 97, 97, 55, 51, 54, 57, 102, 32, 115, 117, 98, 58, 48, 48, 49, 32, 100, 108, 118, 114, 100, 58, 48, 48, 49, 32, 115, 117, 98, 109, 105, 116, 32, 100, 97, 116, 101, 58, 50, 51, 49, 49, 50, 51, 49, 57, 51, 55, 53, 56, 32, 100, 111, 110, 101, 32, 100, 97, 116, 101, 58, 50, 51, 49, 49, 50, 51, 49, 57, 51, 56, 48, 48, 32, 115, 116, 97, 116, 58, 68, 69, 76, 73, 86, 82, 68, 32, 101, 114, 114, 58, 48, 48, 48, 32, 116, 101, 120, 116, 58, 0, 30, 0, 36, 55, 97, 52, 52, 97, 97, 98, 97, 45, 51, 51, 54, 102, 45, 52, 97, 57, 50, 45, 57, 53, 48, 50, 45, 100, 100, 49, 48, 54, 97, 97, 55, 51, 54, 57, 102,
+		0, 0, 0, 224, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 98, 100, 0, 1, 1, 57, 49, 57, 56, 48, 48, 48, 48, 48, 50, 56, 53, 0, 1, 1, 83, 72, 65, 65, 68, 73, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 132, 105, 100, 58, 55, 97, 52, 52, 97, 97, 98, 97, 45, 51, 51, 54, 102, 45, 52, 97, 57, 50, 45, 57, 53, 48, 50, 45, 100, 100, 49, 48, 54, 97, 97, 55, 51, 54, 57, 102, 32, 115, 117, 98, 58, 48, 48, 49, 32, 100, 108, 118, 114, 100, 58, 48, 48, 49, 32, 115, 117, 98, 109, 105, 116, 32, 100, 97, 116, 101, 58, 50, 51, 49, 49, 50, 51, 49, 57, 51, 55, 53, 56, 32, 100, 111, 110, 101, 32, 100, 97, 116, 101, 58, 50, 51, 49, 49, 50, 51, 49, 57, 51, 56, 48, 48, 32, 115, 116, 97, 116, 58, 68, 69, 76, 73, 86, 82, 68, 32, 101, 114, 114, 58, 48, 48, 48, 32, 116, 101, 120, 116, 58, 0, 30, 0, 37, 55, 97, 52, 52, 97, 97, 98, 97, 45, 51, 51, 54, 102, 45, 52, 97, 57, 50, 45, 57, 53, 48, 50, 45, 100, 100, 49, 48, 54, 97, 97, 55, 51, 54, 57, 102, 0,
 	}
 }
 
@@ -42,7 +42,7 @@ func (s *DeliverSmTestSuite) TestDeliverSM_IDecode() {
 
 	tlv, ok := d.TLVs[smpp.RECEIPTED_MESSAGE_ID]
 	assert.True(s.T(), ok)
-	assert.Equal(s.T(), s.msgID, string(tlv.Value()))
+	assert.Equal(s.T(), append([]byte(s.msgID), 0), tlv.Value())
 }
 
 func (s *DeliverSmTestSuite) TestDeliverSM_IEncode() {
@@ -63,14 +63,14 @@ func (s *DeliverSmTestSuite) TestDeliverSM_IEncode() {
 		PriorityFlag:         1,
 		ScheduleDeliveryTime: "",
 		ValidityPeriod:       "",
-		RegisteredDelivery:   1,
-		ReplaceIfPresentFlag: 1,
+		RegisteredDelivery:   0,
+		ReplaceIfPresentFlag: 0,
 		DataCoding:           1,
-		SmDefaultMsgId:       1,
+		SmDefaultMsgId:       0,
 		SmLength:             uint8(len([]byte(s.shortMessageString))),
 		ShortMessage:         []byte(s.shortMessageString),
 		TLVs: map[uint16]smpp.TLV{
-			smpp.RECEIPTED_MESSAGE_ID: smpp.NewTLVByString(smpp.RECEIPTED_MESSAGE_ID, s.msgID),
+			smpp.RECEIPTED_MESSAGE_ID: smpp.NewTLV(smpp.RECEIPTED_MESSAGE_ID, append([]byte(s.msgID), 0)),
 		},
 	}
 	data, err := d.IEncode()

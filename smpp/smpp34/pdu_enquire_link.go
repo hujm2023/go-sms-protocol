@@ -1,6 +1,8 @@
 package smpp34
 
 import (
+	"fmt"
+
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/smpp"
@@ -11,20 +13,32 @@ type EnquireLink struct {
 }
 
 func (e *EnquireLink) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
+	header, err := smpp.ValidateDecodedPDU(data, smpp.ENQUIRE_LINK, false)
+	if err != nil {
+		return err
 	}
-	buf := packet.NewPacketReader(data)
-	defer buf.Release()
-
-	e.Header = smpp.ReadHeader(buf)
-	return buf.Error()
+	if len(data) != smpp.MinSMPPPacketLen {
+		return fmt.Errorf("enquire_link must not contain a body")
+	}
+	if err := smpp.ValidateRequestHeader(header, smpp.ENQUIRE_LINK); err != nil {
+		return err
+	}
+	e.Header = header
+	return nil
 }
 
 func (e *EnquireLink) IEncode() ([]byte, error) {
+	if err := smpp.ValidateRequestHeader(e.Header, smpp.ENQUIRE_LINK); err != nil {
+		return nil, err
+	}
 	buf := packet.NewPacketWriter(0)
+	defer buf.Release()
 	smpp.WriteHeaderNoLength(e.Header, buf)
-	return buf.BytesWithLength()
+	data, err := buf.BytesWithLength()
+	if err != nil {
+		return nil, err
+	}
+	return data, smpp.ValidateEncodedPDU(data)
 }
 
 func (e *EnquireLink) SetSequenceID(id uint32) {
@@ -74,24 +88,34 @@ func (e *EnquireLinkResp) GenEmptyResponse() sms.PDU {
 }
 
 func (e *EnquireLinkResp) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
+	header, err := smpp.ValidateDecodedPDU(data, smpp.ENQUIRE_LINK_RESP, false)
+	if err != nil {
+		return err
 	}
-
-	buf := packet.NewPacketReader(data)
-	defer buf.Release()
-
-	e.Header = smpp.ReadHeader(buf)
-	return buf.Error()
+	if len(data) != smpp.MinSMPPPacketLen {
+		return fmt.Errorf("enquire_link_resp must not contain a body")
+	}
+	if err := smpp.ValidateResponseHeader(header, smpp.ENQUIRE_LINK_RESP); err != nil {
+		return err
+	}
+	e.Header = header
+	return nil
 }
 
 func (e *EnquireLinkResp) IEncode() ([]byte, error) {
+	if err := smpp.ValidateResponseHeader(e.Header, smpp.ENQUIRE_LINK_RESP); err != nil {
+		return nil, err
+	}
 	buf := packet.NewPacketWriter(0)
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(e.Header, buf)
 
-	return buf.BytesWithLength()
+	data, err := buf.BytesWithLength()
+	if err != nil {
+		return nil, err
+	}
+	return data, smpp.ValidateEncodedPDU(data)
 }
 
 func (e *EnquireLinkResp) SetSequenceID(id uint32) {

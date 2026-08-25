@@ -70,6 +70,9 @@ func DecodeSMPP34(data []byte) (sms.PDU, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, err := smpp.ValidateDecodedPDU(data, header.ID, header.ID == smpp.GENERIC_NACK); err != nil {
+		return nil, err
+	}
 
 	var pdu sms.PDU
 	switch header.ID {
@@ -91,6 +94,8 @@ func DecodeSMPP34(data []byte) (sms.PDU, error) {
 		pdu = new(BindResp)
 	case smpp.UNBIND:
 		pdu = new(Unbind)
+	case smpp.UNBIND_RESP:
+		pdu = new(UnBindResp)
 	case smpp.GENERIC_NACK:
 		pdu = new(GenericNack)
 	}

@@ -1,6 +1,8 @@
 package smpp34
 
 import (
+	"fmt"
+
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/smpp"
@@ -11,23 +13,34 @@ type GenericNack struct {
 }
 
 func (g *GenericNack) IDecode(data []byte) error {
-	if len(data) < smpp.MinSMPPPacketLen {
-		return smpp.ErrInvalidPudLength
+	header, err := smpp.ValidateDecodedPDU(data, smpp.GENERIC_NACK, true)
+	if err != nil {
+		return err
 	}
-	buf := packet.NewPacketReader(data)
-	defer buf.Release()
-
-	g.Header = smpp.ReadHeader(buf)
+	if len(data) != smpp.MinSMPPPacketLen {
+		return fmt.Errorf("generic_nack must not contain a body")
+	}
+	if err := smpp.ValidateGenericNackHeader(header); err != nil {
+		return err
+	}
+	g.Header = header
 	return nil
 }
 
 func (g *GenericNack) IEncode() ([]byte, error) {
+	if err := smpp.ValidateGenericNackHeader(g.Header); err != nil {
+		return nil, err
+	}
 	buf := packet.NewPacketWriter(0)
 	defer buf.Release()
 
 	smpp.WriteHeaderNoLength(g.Header, buf)
 
-	return buf.BytesWithLength()
+	data, err := buf.BytesWithLength()
+	if err != nil {
+		return nil, err
+	}
+	return data, smpp.ValidateEncodedPDU(data)
 }
 
 func (g *GenericNack) SetSequenceID(id uint32) {

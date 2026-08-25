@@ -47,6 +47,20 @@ func TestExtractDeliveryReceipt(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, DeliveryReceipt{}, d)
 	})
+	t.Run("vendor UUID and text with spaces", func(t *testing.T) {
+		s := "vendor_id:opaque id:7a44aaba-336f-4a92-9502-dd106aa7369f sub:001 dlvrd:001 submit date:231123193758 done date:231123193800 stat:DELIVRD err:000 text:delivery completed successfully"
+		d, err := ExtractDeliveryReceipt(s)
+		assert.NoError(t, err)
+		assert.Equal(t, "7a44aaba-336f-4a92-9502-dd106aa7369f", d.ID)
+		assert.Equal(t, "delivery completed successfully", d.Text)
+	})
+	t.Run("text before known field", func(t *testing.T) {
+		s := "id:1235 text:hello world stat:DELIVRD"
+		d, err := ExtractDeliveryReceipt(s)
+		assert.NoError(t, err)
+		assert.Equal(t, "hello world", d.Text)
+		assert.Equal(t, "DELIVRD", d.Stat)
+	})
 	t.Run("demo", func(t *testing.T) {
 		d := ""
 		dd, err := ExtractDeliveryReceipt(d)
@@ -75,6 +89,10 @@ func TestFindSubValue(t *testing.T) {
 			v := findSubValue(s, item.key, item.maxSize)
 			assert.Equal(t, item.expectValue, v)
 		}
+	})
+	t.Run("text preserves spaces", func(t *testing.T) {
+		s := "id:1235 text:hello delivery receipt"
+		assert.Equal(t, "hello delivery receipt", findSubValue(s, "text", 20))
 	})
 	t.Run("顺序不对", func(t *testing.T) {
 		s := "id:1235 submit date:2107081716 sub:001 dlvrd:1 done date:2210131801 stat:DELIVRD err:0 text:"
