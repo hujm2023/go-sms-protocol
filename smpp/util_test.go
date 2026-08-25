@@ -27,8 +27,8 @@ func TestToValidatePeriod1(t *testing.T) {
 			{name: "分钟", args: time.Minute * 10, want: "000000001000000R"},
 			{name: "小时", args: time.Hour * 10, want: "000000100000000R"},
 			{name: "天", args: time.Hour * 24 * 10, want: "000010000000000R"},
-			{name: "月，不起作用", args: time.Hour * 24 * 31 * 10, want: ""},
-			{name: "年，不起作用", args: time.Hour * 24 * 31 * 12 * 10, want: ""},
+			{name: "30天", args: time.Hour * 24 * 30, want: "000030000000000R"},
+			{name: "超过30天不取模", args: time.Hour * 24 * 31, want: "000031000000000R"},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
@@ -86,6 +86,57 @@ func TestToValidatePeriod1(t *testing.T) {
 
 	t.Run("demo", func(t *testing.T) {
 	})
+}
+
+func TestToValidatePeriodRelativeDurationLimit(t *testing.T) {
+	now := time.Date(2023, 4, 18, 15, 46, 30, 0, time.UTC)
+	tests := []struct {
+		name    string
+		period  string
+		want    string
+		wantErr string
+	}{
+		{name: "30 days is representable", period: "720h", want: "000030000000000R"},
+		{name: "31 days is rejected", period: "744h", wantErr: "relative duration exceeds 30 days"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ToValidatePeriod(now, tt.period, true)
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				assert.Empty(t, got)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestProtocolConstants(t *testing.T) {
+	tests := []struct {
+		name string
+		got  int
+		want int
+	}{
+		{name: "NPI unknown", got: NPI_Unknown, want: 0},
+		{name: "NPI ISDN", got: NPI_ISDN, want: 1},
+		{name: "NPI data", got: NPI_Data, want: 3},
+		{name: "NPI telex", got: NPI_Telex, want: 4},
+		{name: "NPI land mobile", got: NPI_LandMobile, want: 6},
+		{name: "NPI national", got: NPI_National, want: 8},
+		{name: "NPI private", got: NPI_Private, want: 9},
+		{name: "NPI ERMES", got: NPI_ERMES, want: 10},
+		{name: "NPI internet", got: NPI_Internet, want: 14},
+		{name: "NPI WAP client ID", got: NPI_WAPClientID, want: 18},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.got)
+		})
+	}
+	assert.Equal(t, "DELETED", DELETED)
 }
 
 func Test_isDigest(t *testing.T) {

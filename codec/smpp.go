@@ -27,7 +27,11 @@ func (cc *SMPPCodec) Decode(c ConnReader) ([]byte, error) {
 		return nil, ErrPacketNotComplete
 	}
 
-	totalLen := int(binary.BigEndian.Uint32(totalLenBytes))
+	commandLength := binary.BigEndian.Uint32(totalLenBytes)
+	if err := validateSMPPCommandLength(commandLength); err != nil {
+		return nil, err
+	}
+	totalLen := int(commandLength)
 	if c.Size() < totalLen {
 		return nil, ErrPacketNotComplete
 	}
@@ -56,7 +60,11 @@ func (cc *SMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	totalLen := int(binary.BigEndian.Uint32(totalLenBytes))
+	commandLength := binary.BigEndian.Uint32(totalLenBytes)
+	if err := validateSMPPCommandLength(commandLength); err != nil {
+		return nil, err
+	}
+	totalLen := int(commandLength)
 
 	left := make([]byte, totalLen)
 	_, err = io.ReadFull(c, left[smpp.MinSMPPHeaderLen:])
@@ -66,4 +74,11 @@ func (cc *SMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
 	copy(left[:smpp.MinSMPPHeaderLen], totalLenBytes)
 
 	return left, nil
+}
+
+func validateSMPPCommandLength(commandLength uint32) error {
+	if commandLength < smpp.MinSMPPPacketLen || commandLength > smpp.MAX_PDU_SIZE {
+		return smpp.ErrInvalidPudLength
+	}
+	return nil
 }

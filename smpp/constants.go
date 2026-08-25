@@ -228,7 +228,7 @@ const (
 	// delivery receipt stat
 	DELIVERED     = "DELIVRD" // Message is delivered to destination
 	EXPIRED       = "EXPIRED" // Message validity period has expired.
-	DELETED       = "DEIETED" // Message has been deleted.
+	DELETED       = "DELETED" // Message has been deleted.
 	UNDELIVERABLE = "UNDELIV" // Message is undeliverable
 	ACCEPTED      = "ACCEPTD" // Message is in accepted state (i.e. has been manually read on behalf of the subscriber by customer service)
 	UNKNOWN       = "UNKNOWN" // Message is in invalid state
@@ -249,14 +249,14 @@ const (
 
 const (
 	// These fields define the Numeric Plan Indicator (NPI) to be used in the SME address parameters
-	NPI_Unknown     = 0o0000000
-	NPI_ISDN        = 0o0000001
-	NPI_Data        = 0o0000011
-	NPI_Telex       = 0o0000100
-	NPI_LandMobile  = 0o0000110
-	NPI_National    = 0o0001000
-	NPI_Private     = 0o0001001
-	NPI_ERMES       = 0o0001010
-	NPI_Internet    = 0o0001110
-	NPI_WAPClientID = 0o0010010
+	NPI_Unknown     = 0x00
+	NPI_ISDN        = 0x01
+	NPI_Data        = 0x03
+	NPI_Telex       = 0x04
+	NPI_LandMobile  = 0x06
+	NPI_National    = 0x08
+	NPI_Private     = 0x09
+	NPI_ERMES       = 0x0A
+	NPI_Internet    = 0x0E
+	NPI_WAPClientID = 0x12
 )
