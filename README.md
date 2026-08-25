@@ -1,113 +1,163 @@
 # go-sms-protocol
 
+English | [简体中文](README.zh-CN.md)
+
+[![CI](https://github.com/hujm2023/go-sms-protocol/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hujm2023/go-sms-protocol/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hujm2023/go-sms-protocol.svg)](https://pkg.go.dev/github.com/hujm2023/go-sms-protocol)
-[![Go Report Card](https://goreportcard.com/badge/github.com/hujm2023/go-sms-protocol)](https://goreportcard.com/report/github.com/hujm2023/go-sms-protocol)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Coverage](https://img.shields.io/badge/Coverage-49.7%25-yellow)
+[![Go version](https://img.shields.io/github/go-mod/go-version/hujm2023/go-sms-protocol)](go.mod)
+[![License](https://img.shields.io/github/license/hujm2023/go-sms-protocol)](LICENSE)
 
-本项目是用 Go 语言实现的短信标准协议集合，支持主流的运营商短信网关协议，包括 SMPP、CMPP、SGIP、SMGP 等，适用于短信网关、SP、ISMG 等场景。项目结构清晰，易于扩展和维护，适合企业级短信平台、聚合网关、协议适配器等多种场景。
+`go-sms-protocol` is a Go library for encoding and decoding selected PDUs from SMPP 3.4, CMPP 2.0/3.0, SGIP 1.2, and SMGP 3.0. It also provides CMPP/SMPP stream framing, SMS text codecs, concatenated-message helpers, and a `netpoll`-based server building block.
 
----
+This repository is a library, not a ready-to-run SMS gateway or command-line application.
 
-## ✨ 特性亮点
+## Installation
 
-- 支持 SMPP3.4/5.0、CMPP2.0/3.0、SGIP1.2、SMGP3.0 等主流短信协议
-- 完整实现消息打包、解包、状态报告、链路检测等核心功能
-- 代码结构清晰，易于扩展和维护
-- 提供基于 netpoll 的事件驱动网络服务端组件
-- 兼容多种编码格式，支持长短信拆分与组装
+The minimum supported Go version is 1.20.
 
-## 📦 支持协议
-
-- [x] SMPP3.4（国际短信标准协议 3.0）
-- [x] SMPP5.0（国际短信标准协议 5.0）
-- [x] CMPP2.0（中国移动 2.0）
-- [x] CMPP3.0（中国移动 3.0）
-- [x] SGIP1.2（中国联通）
-- [x] SMGP3.0（中国电信）
-
-## 📁 目录结构
-
-- `cmpp/`：CMPP 协议实现（含 2.0、3.0）
-- `sgip/`：SGIP 协议实现（含 1.2）
-- `smgp/`：SMGP 协议实现（含 3.0）
-- `smpp/`：SMPP 协议实现（含 3.4、5.0）
-- `codec/`、`datacoding/`：协议通用的消息编解码与编码格式支持
-- `nioserver/`：基于 netpoll 的事件驱动网络服务端组件
-- `packet/`：二进制数据包编解码工具
-- `doc/`：各协议官方标准文档（PDF）
-
-## 🚀 安装方式
-
-- 需 Go 1.20 及以上版本
-- 依赖详见 go.mod
-
-```shell
- go get github.com/hujm2023/go-sms-protocol
+```bash
+go get github.com/hujm2023/go-sms-protocol@latest
 ```
 
-## 🛠️ 快速开始
+## Quick start
 
-### 1. 克隆仓库
+The following program creates an SMPP 3.4 `enquire_link` PDU, encodes it to wire bytes, and decodes it through the protocol dispatcher.
 
-```shell
-git clone https://github.com/hujm2023/go-sms-protocol.git
-cd go-sms-protocol
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/hujm2023/go-sms-protocol/smpp"
+	"github.com/hujm2023/go-sms-protocol/smpp/smpp34"
+)
+
+func main() {
+	request := &smpp34.EnquireLink{
+		Header: smpp.Header{
+			ID:       smpp.ENQUIRE_LINK,
+			Sequence: 42,
+		},
+	}
+
+	wire, err := request.IEncode()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pdu, err := smpp34.DecodeSMPP34(wire)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%s sequence=%d\n", pdu.GetCommand().String(), pdu.GetSequenceID())
+}
 ```
 
-### 2. 基础功能
+Expected output:
 
-- 最优编码选择
-- 长短信拼接
-- 长短信拆分
-- 各协议编解码支持
+```text
+SMPP_ENQUIRE_LINK sequence=42
+```
 
-详细用法请参考各协议目录下的测试用例。
+Use the dispatcher that matches the wire protocol and version:
 
-## 🙋 常见问题（FAQ）
+| Protocol | Dispatcher |
+| --- | --- |
+| CMPP 2.0 | `cmpp20.DecodeCMPP20` |
+| CMPP 3.0 | `cmpp30.DecodeCMPP30` |
+| SGIP 1.2 | `sgip12.DecodeSGIP12` |
+| SMGP 3.0 | `smgp30.DecodeSMGP30` |
+| SMPP 3.4 | `smpp34.DecodeSMPP34` |
 
-- **Q: 如何支持长短信拆分与组装？**
-  A: 本库已内置长短信拆分与组装逻辑，详见 `longsms.go` 及相关协议实现。
-- **Q: 如何自定义编码格式？**
-  A: 可通过 `datacoding/` 目录下的编码器进行扩展或自定义。
+Every successfully decoded value implements the root `protocol.PDU` interface, including wire encoding/decoding, command and sequence access, response construction, and string formatting.
 
-## 🤝 社区与贡献
+## Protocol coverage
 
-- 欢迎提交 issue、PR 及建议
-- 代码需遵循 Go 语言规范，建议补充必要的注释和测试
-- 详细贡献流程见 [CONTRIBUTING.md]（如有）
+Coverage in this table means that the package contains concrete PDU types and that its dispatcher recognizes the listed command families. Command constants outside this table may exist without a corresponding PDU implementation.
 
-## 📚 参考文档
+| Version | Implemented PDU families |
+| --- | --- |
+| CMPP 2.0 | `CONNECT`, `SUBMIT`, `QUERY`, `DELIVER`, `ACTIVE_TEST`, `TERMINATE`, and their responses |
+| CMPP 3.0 | CMPP 2.0 families plus `CANCEL` and its response |
+| SGIP 1.2 | `BIND`, `UNBIND`, `SUBMIT`, `REPORT`, `DELIVER`, and their responses |
+| SMGP 3.0 | `LOGIN`, `SUBMIT`, `DELIVER`, `ACTIVE_TEST`, `EXIT`, and their responses |
+| SMPP 3.4 | bind receiver/transmitter/transceiver, `SUBMIT_SM`, `DELIVER_SM`, `ENQUIRE_LINK`, `UNBIND`, `GENERIC_NACK`, and responses where defined |
 
-- 项目根目录 doc/ 下包含各协议官方标准 PDF，可供详细查阅
+SMPP 5.0 is not implemented. A protocol PDF or version constant in the repository does not imply decoder or PDU support.
 
-## 🏗️ 可扩展性与架构设计
+## Packages
 
-本项目高度重视可扩展性与模块解耦，便于二次开发和协议适配：
+| Package | Purpose |
+| --- | --- |
+| Root package | Shared `PDU` contract, content helpers, CMPP/SMPP long-message splitting, UDH parsing, and batch data-coding selection |
+| [`cmpp/cmpp20`](cmpp/cmpp20), [`cmpp/cmpp30`](cmpp/cmpp30) | CMPP PDU types and version-specific dispatchers |
+| [`sgip/sgip12`](sgip/sgip12) | SGIP 1.2 PDU types and dispatcher |
+| [`smgp/smgp30`](smgp/smgp30) | SMGP 3.0 PDU types and dispatcher |
+| [`smpp/smpp34`](smpp/smpp34) | SMPP 3.4 PDU types, validation, TLVs, delivery receipts, and dispatcher |
+| [`codec`](codec) | Blocking and non-blocking TCP frame extraction for CMPP and SMPP |
+| [`datacoding`](datacoding) | ASCII, GB18030, GSM 7-bit packed/unpacked, Latin-1, and UCS-2 codecs |
+| [`packet`](packet) | Binary packet reader, writer, and PDU string formatting helpers |
+| [`nioserver`](nioserver) | Generic `netpoll` TCP server primitives with bounded handler and write admission |
 
-- **协议适配层**：各主流短信协议（SMPP、CMPP、SGIP、SMGP）均采用独立目录和模块实现，遵循统一接口规范，便于新增或替换协议实现。
-- **插件化机制**：核心功能与协议实现解耦，支持通过接口扩展自定义消息处理、编码格式、链路管理等，满足多样化业务需求。
-- **灵活的消息编解码**：`codec/` 和 `datacoding/` 目录下实现了通用的消息编解码框架，支持多种编码格式（如 GSM7、UCS2、GB18030 等），可按需扩展。
-- **事件驱动网络服务端**：`nioserver/` 基于 netpoll，提供有界 handler admission、连接级串行写入和可控的优雅关闭。
-- **模块解耦与可测试性**：各协议、工具、网络层均为独立包，便于单元测试和功能扩展，提升代码可维护性。
-- **易于集成与定制**：通过接口和配置，开发者可快速集成本库至自有系统，或根据业务场景定制协议细节和消息处理逻辑。
+The complete exported API is available on [pkg.go.dev](https://pkg.go.dev/github.com/hujm2023/go-sms-protocol).
 
-该架构设计确保了项目的灵活性、可维护性和易用性，适合企业级短信平台、聚合网关、协议适配器等多种场景。
+## Message content and concatenated SMS
 
-### 📖 扩展指南
+The root package provides:
 
-- **添加新协议**：实现 protocol.PDU 接口以适配新协议消息类型；如需特殊的数据包长度判定，可实现对应的 codec.Codec；并新增协议专属的解码分发器（如 DecodeCMPP30）。
-- **添加新 PDU**：在对应协议/版本包下定义新的 PDU 结构体，实现 protocol.PDU 接口，并在协议的解码分发函数中注册。
-- **添加新编码方式**：实现 datacoding.Codec 接口，并根据需要在 codec_cmpp.go、codec_smpp.go 等协议包装器中注册。
-- **自定义服务端行为**：通过 nioserver.BaseServer 的 ServerOption 选项自定义日志、工作池、连接生命周期回调（如 OnCloseFunc、WithRefreshCtxWhenRead）；可用 ISMSConn.SetBizData 为连接附加自定义业务数据。
+- `EncodeCMPPContentAndSplit` and `EncodeSMPPContentAndSplit` for encoding text and adding a six-byte UDH when segmentation is required.
+- `ParseLongSmsContent` and `ParseLongSmsContentBytes` for parsing one segment with a supported six- or seven-byte UDH.
+- `DecodeCMPPCContent` and `DecodeSMPPCContent` variants for decoding message content.
+- `BatchDataCodingEncoder` for trying multiple CMPP or SMPP data codings and choosing the result with the fewest segments.
 
-`nioserver.BaseServer` 是单次运行对象。宿主应用负责处理进程信号：调用 `Run()` 阻塞运行，调用 `Shutdown(ctx)` 执行带截止时间的优雅关闭，并通过 `Addr()` 读取绑定后的实际地址。旧 `Serve(wait)` 仅作为兼容包装保留。
+The library does not maintain cross-segment state or assemble a complete message from multiple received segments. Applications must group segments by their UDH reference and order them by segment index.
 
-默认每条连接只允许一个已接纳 handler，以保持处理和响应顺序。只有协议和业务状态都支持并发时，才应通过 `WithMaxInFlightHandlersPerConnection` 显式提高。连接写入优先使用返回 error 的 `ISMSConn.Write` 或 `WriteAndClose`；旧 `AsyncWrite` 已弃用。调用方传入的 worker pool 仍由调用方拥有，server 只跟踪提交任务，不负责关闭 pool。
+## TCP framing and server integration
 
-上述机制可帮助开发者灵活扩展协议、消息类型和编码方式，并根据业务需求定制服务端行为。
+`codec.NewCMPPCodec` and `codec.NewSMPPCodec` provide non-blocking `Decode` and blocking `DecodeBlocked` paths. The non-blocking path returns `codec.ErrPacketNotComplete` without discarding a partial frame. SGIP and SMGP do not currently have equivalent stream codecs in this repository.
 
-## 📬 联系方式
+`nioserver.BaseServer` is a generic server primitive. Callers must provide both an `UnpackFunc` and a `HandleFunc`; no protocol dispatcher is selected automatically.
 
-- 作者：hujm2023
-- Email: <hujm2023@gmail.com>
+`codec.ConnReader` and `netpoll.Reader` are different interfaces. Using a `codec` implementation inside `nioserver` requires an adapter or a protocol-specific `UnpackFunc`.
+
+See the [runnable CMPP 2.0 server example](nioserver/examples/cmpp20server) for authentication, submit handling, simulated delivery receipts, heartbeats, and graceful shutdown.
+
+Important lifecycle rules:
+
+- `Run` binds and serves synchronously; the application owns process signals.
+- `Shutdown(ctx)` performs a context-bounded graceful shutdown.
+- A server instance is single-use.
+- The default per-connection handler limit is one, preserving request/response order. Raising it opts into concurrent handling and possible response reordering.
+- Use `ISMSConn.Write` or `WriteAndClose` for error-returning writes. `AsyncWrite` is deprecated.
+
+## Scope and limitations
+
+- There is no production-ready SMS gateway, SMPP/CMPP client session manager, persistence layer, routing policy, or delivery retry engine. The runnable server under `nioserver/examples` is an integration example.
+- Protocol coverage is limited to the PDU families listed above.
+- Long-message reassembly state belongs to the caller.
+- Authentication credentials, connection state, sequence allocation, and business-level delivery semantics remain application responsibilities.
+
+## Development
+
+Run the following commands from the repository root:
+
+```bash
+go test ./...
+go test -race ./...
+go vet ./...
+```
+
+GitHub Actions additionally tests Go 1.20 and the current stable Go release, checks formatting and module tidiness, runs Staticcheck and Actionlint, enforces the configured coverage threshold, performs security scans, and runs the fuzz target matrix on a schedule.
+
+When changing a wire decoder, include valid round-trip cases, malformed-length cases, and a fuzz seed when the new path accepts untrusted bytes.
+
+## Contributing
+
+Issues and pull requests are welcome. For protocol changes, identify the protocol version and command ID, describe the expected wire layout, and include tests that demonstrate the behavior.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

@@ -49,7 +49,7 @@ func (p *PduConnect) IDecode(data []byte) error {
 
 	p.Header = cmpp.ReadHeader(buf)
 	p.SourceAddr = buf.ReadCStringN(6)
-	p.AuthenticatorSource = buf.ReadCStringN(16)
+	p.AuthenticatorSource = buf.ReadCStringNWithoutTrim(16)
 	p.Version = buf.ReadUint8()
 	p.Timestamp = buf.ReadUint32()
 
@@ -134,7 +134,7 @@ func (pr *PduConnectResp) IDecode(data []byte) error {
 	buf := packet.NewPacketReader(data)
 	pr.Header = cmpp.ReadHeader(buf)
 	pr.Status = ConnectRespStatus(buf.ReadUint8())
-	pr.AuthenticatorISMG = buf.ReadCStringN(16)
+	pr.AuthenticatorISMG = buf.ReadCStringNWithoutTrim(16)
 	pr.Version = buf.ReadUint8()
 
 	return buf.Error()
