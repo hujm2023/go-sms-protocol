@@ -42,7 +42,10 @@ func (u *Unbind) GetCommand() sms.ICommander {
 
 func (u *Unbind) GenEmptyResponse() sms.PDU {
 	return &UnbindResp{
-		Header: sgip.NewHeader(0, sgip.SGIP_UNBIND_REP, u.Sequence[0], u.GetSequenceID()),
+		Header: sgip.Header{
+			CommandID: sgip.SGIP_UNBIND_REP,
+			Sequence:  u.Sequence,
+		},
 	}
 }
 
@@ -76,7 +79,10 @@ func (p *UnbindResp) IDecode(data []byte) error {
 	b := packet.NewPacketReader(data)
 	defer b.Release()
 	p.Header = sgip.ReadHeader(b)
-	return nil
+	if p.Header.TotalLength != uint32(len(data)) {
+		return sgip.ErrInvalidPudLength
+	}
+	return b.Error()
 }
 
 func (p *UnbindResp) SetSequenceID(id uint32) {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/bytedance/mockey"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hujm2023/go-sms-protocol/sgip"
@@ -30,7 +29,6 @@ func TestBind(t *testing.T) {
 	assert.Equal(t, "testpwd", a.Password)
 	assert.Equal(t, sgip.SGIP_BIND, a.GetCommand())
 
-	mockey.Mock(sgip.Timestamp).Return(0).Build()
 	bind := &Bind{
 		Header: sgip.Header{
 			CommandID: sgip.SGIP_BIND,
@@ -53,7 +51,6 @@ func TestBind(t *testing.T) {
 	assert.Equal(t, sgip.SGIP_BIND_REP, bindResp.GetCommand())
 	assert.Nil(t, bindResp.GenEmptyResponse())
 
-	t.Log(a.String())
 }
 
 func TestBindResp(t *testing.T) {

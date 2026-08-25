@@ -85,7 +85,10 @@ func (d *Deliver) GetCommand() sms.ICommander {
 
 func (d *Deliver) GenEmptyResponse() sms.PDU {
 	return &DeliverResp{
-		Header: sgip.NewHeader(0, sgip.SGIP_DELIVER_REP, d.Header.Sequence[0], d.GetSequenceID()),
+		Header: sgip.Header{
+			CommandID: sgip.SGIP_DELIVER_REP,
+			Sequence:  d.Sequence,
+		},
 	}
 }
 

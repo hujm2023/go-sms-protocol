@@ -86,6 +86,7 @@ func (s *Submit) IDecode(data []byte) error {
 	defer b.Release()
 
 	s.Header = smgp.ReadHeader(b)
+	s.DestTermID = nil
 	s.MsgType = b.ReadUint8()
 	s.NeedReport = b.ReadUint8()
 	s.Priority = b.ReadUint8()
@@ -114,6 +115,13 @@ func (s *Submit) IDecode(data []byte) error {
 }
 
 func (s *Submit) IEncode() ([]byte, error) {
+	if int(s.DestTermIDCount) != len(s.DestTermID) {
+		return nil, fmt.Errorf("DestTermIDCount=%d does not match DestTermID length=%d", s.DestTermIDCount, len(s.DestTermID))
+	}
+	if int(s.MsgLength) != len(s.MsgContent) {
+		return nil, fmt.Errorf("MsgLength=%d does not match MsgContent length=%d", s.MsgLength, len(s.MsgContent))
+	}
+
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
@@ -219,7 +227,7 @@ func (s *SubmitResp) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	smgp.WriteHeaderNoLength(s.Header, b)
-	msgID, err := hex.DecodeString(s.MsgID)
+	msgID, err := decodeMsgID(s.MsgID)
 	if err != nil {
 		return nil, err
 	}

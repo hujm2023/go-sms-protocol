@@ -63,7 +63,10 @@ func (b *Bind) GetCommand() sms.ICommander {
 
 func (b *Bind) GenEmptyResponse() sms.PDU {
 	return &BindResp{
-		Header: sgip.NewHeader(0, sgip.SGIP_BIND_REP, b.Sequence[0], b.GetSequenceID()),
+		Header: sgip.Header{
+			CommandID: sgip.SGIP_BIND_REP,
+			Sequence:  b.Sequence,
+		},
 	}
 }
 

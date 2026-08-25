@@ -1,9 +1,13 @@
 package smgp
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/hujm2023/go-sms-protocol/packet"
 )
 
 func TestParseOptions(t *testing.T) {
@@ -91,4 +95,63 @@ func TestOptionsTP_udhi(t *testing.T) {
 	options = Options{}
 	expectedDefaultValue := uint8(0)
 	assert.Equal(t, expectedDefaultValue, options.TP_udhi())
+}
+
+func TestOptionsAddNilDoesNotPanicOrMutate(t *testing.T) {
+	var options Options
+
+	assert.NotPanics(t, func() {
+		options.Add(NewOption(TAG_TP_pid, []byte{0x01}))
+	})
+	assert.Nil(t, options)
+}
+
+func TestOptionsTPUdhiEmptyValueIsSafe(t *testing.T) {
+	options := Options{TAG_TP_udhi: NewOption(TAG_TP_udhi, nil)}
+
+	assert.NotPanics(t, func() {
+		assert.Zero(t, options.TP_udhi())
+	})
+}
+
+func TestOptionsSerializeParseSemanticRoundTrip(t *testing.T) {
+	want := Options{}
+	want.Add(NewOption(TAG_TP_pid, []byte{0x12, 0x34}))
+	want.Add(NewOption(TAG_TP_udhi, []byte{0x01}))
+	want.Add(NewOption(TAG_LinkID, []byte("link")))
+
+	raw := want.Serialize()
+	got, err := ParseOptions(raw)
+	assert.NoError(t, err)
+	assert.Equal(t, want, got)
+	assert.Equal(t, want.Len(), len(raw))
+}
+
+func TestParseOptionsRejectsTruncatedInput(t *testing.T) {
+	raw := NewOption(TAG_TP_pid, []byte{0x12, 0x34}).Bytes()
+	for i := 1; i < len(raw); i++ {
+		t.Run(fmt.Sprintf("truncated_at_%d", i), func(t *testing.T) {
+			_, err := ParseOptions(raw[:i])
+			if !errors.Is(err, ErrLength) {
+				t.Fatalf("ParseOptions(%x) error=%v, want ErrLength", raw[:i], err)
+			}
+		})
+	}
+}
+
+func TestReadOptionsPreservesTruncationError(t *testing.T) {
+	raw := NewOption(TAG_TP_pid, []byte{0x12, 0x34}).Bytes()
+	for i := 1; i < len(raw); i++ {
+		t.Run(fmt.Sprintf("truncated_at_%d", i), func(t *testing.T) {
+			r := packet.NewPacketReader(raw[:i])
+			defer r.Release()
+
+			if got := ReadOptions(r); got != nil {
+				t.Fatalf("ReadOptions(%x)=%v, want nil on truncation", raw[:i], got)
+			}
+			if r.Error() == nil {
+				t.Fatalf("ReadOptions(%x) cleared the reader error", raw[:i])
+			}
+		})
+	}
 }

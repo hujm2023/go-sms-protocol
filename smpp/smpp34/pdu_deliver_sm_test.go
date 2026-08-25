@@ -117,6 +117,49 @@ func TestDeliverSmTestSuite(t *testing.T) {
 	suite.Run(t, new(DeliverSmTestSuite))
 }
 
+func TestDeliverSmOptionalTLVsRoundTripRepeatedAndPayload(t *testing.T) {
+	p := validDeliverSm()
+	p.SmLength = 0
+	p.ShortMessage = nil
+	p.OptionalTLVs = smpp.TLVList{
+		smpp.NewTLV(smpp.CALLBACK_NUM, []byte{1, 1, '1'}),
+		smpp.NewTLV(smpp.MESSAGE_PAYLOAD, []byte("payload")),
+		smpp.NewTLV(smpp.CALLBACK_NUM, []byte{1, 1, '2'}),
+	}
+
+	data, err := p.IEncode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded := new(DeliverSm)
+	if err := decoded.IDecode(data); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(decoded.OptionalTLVs) != 3 {
+		t.Fatalf("optional TLV count=%d, want 3", len(decoded.OptionalTLVs))
+	}
+	if got := decoded.OptionalTLVs[0].Tag; got != smpp.CALLBACK_NUM {
+		t.Fatalf("first TLV tag=%#x, want callback_num", got)
+	}
+	if got := decoded.OptionalTLVs[1].Tag; got != smpp.MESSAGE_PAYLOAD {
+		t.Fatalf("second TLV tag=%#x, want message_payload", got)
+	}
+	if got := decoded.OptionalTLVs[2].Tag; got != smpp.CALLBACK_NUM {
+		t.Fatalf("third TLV tag=%#x, want callback_num", got)
+	}
+	values := decoded.OptionalTLVs.All(smpp.CALLBACK_NUM)
+	if len(values) != 2 || !bytes.Equal(values[0].Value(), []byte{1, 1, '1'}) || !bytes.Equal(values[1].Value(), []byte{1, 1, '2'}) {
+		t.Fatalf("repeated callback_num values changed: %#v", values)
+	}
+	if got := decoded.TLVs[smpp.CALLBACK_NUM].Value(); !bytes.Equal(got, []byte{1, 1, '2'}) {
+		t.Fatalf("legacy TLV map should retain final occurrence, got %v", got)
+	}
+	if payload := decoded.OptionalTLVs.All(smpp.MESSAGE_PAYLOAD); len(payload) != 1 || !bytes.Equal(payload[0].Value(), []byte("payload")) {
+		t.Fatalf("message_payload changed: %#v", payload)
+	}
+}
+
 type DeliverSmRespTestSuite struct {
 	suite.Suite
 

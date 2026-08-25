@@ -44,7 +44,7 @@ func ParseLongSmsContent(content string) (frameKey, total, index int, newContent
 		newContent = content[6:]
 	case len(content) > minLongSmsHeaderLength &&
 		content[0] == longMsgHeader7ByteFrameKey && content[1] == longMsgHeader7ByteFrameTotal && content[2] == longMsgHeader7ByteFrameNum:
-		frameKey = int((content[3] & 0xff) | (content[4] & 0xff))
+		frameKey = int(content[3]&0xff)<<8 | int(content[4]&0xff)
 		total = int(content[5] & 0xff)
 		index = int(content[6] & 0xff)
 		newContent = content[7:]
@@ -76,7 +76,7 @@ func ParseLongSmsContentBytes(content []byte) (frameKey, total, index int, newCo
 		newContent = content[6:]
 	case len(content) > minLongSmsHeaderLength &&
 		content[0] == longMsgHeader7ByteFrameKey && content[1] == longMsgHeader7ByteFrameTotal && content[2] == longMsgHeader7ByteFrameNum:
-		frameKey = int((content[3] & 0xff) | (content[4] & 0xff))
+		frameKey = int(content[3]&0xff)<<8 | int(content[4]&0xff)
 		total = int(content[5] & 0xff)
 		index = int(content[6] & 0xff)
 		newContent = content[7:]

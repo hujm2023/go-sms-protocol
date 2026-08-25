@@ -90,7 +90,10 @@ func (r *Report) GetCommand() sms.ICommander {
 
 func (r *Report) GenEmptyResponse() sms.PDU {
 	return &ReportResp{
-		Header: sgip.NewHeader(0, sgip.SGIP_REPORT_REP, r.Header.Sequence[0], r.GetSequenceID()),
+		Header: sgip.Header{
+			CommandID: sgip.SGIP_REPORT_REP,
+			Sequence:  r.Sequence,
+		},
 	}
 }
 

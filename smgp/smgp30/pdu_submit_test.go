@@ -1,6 +1,8 @@
 package smgp30
 
 import (
+	"bytes"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -88,6 +90,69 @@ func TestSubmitIndexedDestTermIDFieldLengthError(t *testing.T) {
 	requireFieldLengthError(t, err, "DestTermID[0]", 22, 21)
 }
 
+func TestSubmitEncodeRejectsInconsistentCountsAndLength(t *testing.T) {
+	base := Submit{
+		Header:          smgp.Header{CommandID: smgp.CommandSubmit, SequenceID: 1},
+		DestTermIDCount: 1,
+		DestTermID:      []string{"13800138000"},
+		MsgLength:       1,
+		MsgContent:      []byte{0x01},
+	}
+
+	tests := []struct {
+		name   string
+		mutate func(*Submit)
+	}{
+		{name: "destination count too small", mutate: func(p *Submit) { p.DestTermIDCount = 0 }},
+		{name: "destination count too large", mutate: func(p *Submit) { p.DestTermIDCount = 2 }},
+		{name: "message length too small", mutate: func(p *Submit) { p.MsgLength = 0 }},
+		{name: "message length too large", mutate: func(p *Submit) { p.MsgLength = 2 }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := base
+			tt.mutate(&p)
+			if _, err := p.IEncode(); err == nil {
+				t.Fatal("inconsistent Submit accepted")
+			}
+		})
+	}
+}
+
+func TestSubmitBinaryContentAndOptionsRoundTrip(t *testing.T) {
+	wantOptions := smgp.Options{}
+	wantOptions.Add(smgp.NewOption(smgp.TAG_TP_pid, []byte{0x01, 0xff}))
+	wantOptions.Add(smgp.NewOption(smgp.TAG_LinkID, []byte("link")))
+	want := &Submit{
+		Header:          smgp.Header{CommandID: smgp.CommandSubmit, SequenceID: 7},
+		MsgType:         smgp.MT,
+		MsgFormat:       smgp.BINARY,
+		ServiceID:       "svc",
+		SrcTermID:       "1069000000",
+		DestTermIDCount: 1,
+		DestTermID:      []string{"13800138000"},
+		MsgLength:       4,
+		MsgContent:      []byte{0x00, 0xff, 0x01, 0x80},
+		Options:         wantOptions,
+	}
+
+	data, err := want.IEncode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := new(Submit)
+	if err := got.IDecode(data); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got.MsgContent, want.MsgContent) {
+		t.Fatalf("binary content=%x, want %x", got.MsgContent, want.MsgContent)
+	}
+	if !reflect.DeepEqual(got.Options, wantOptions) {
+		t.Fatalf("options=%v, want %v", got.Options, wantOptions)
+	}
+}
+
 type SubmitRespTestSuite struct {
 	suite.Suite
 
@@ -127,4 +192,29 @@ func (s *SubmitRespTestSuite) TestSubmitResp_IDecode() {
 
 func TestSubmitResp(t *testing.T) {
 	suite.Run(t, new(SubmitRespTestSuite))
+}
+
+func TestSMGP30MsgIDRequiresTenBytes(t *testing.T) {
+	tests := []struct {
+		name string
+		id   string
+	}{
+		{name: "empty", id: ""},
+		{name: "odd hex", id: "0"},
+		{name: "short", id: "010203040506070809"},
+		{name: "long", id: "0102030405060708090102"},
+		{name: "non hex", id: "0102030405060708090g"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &SubmitResp{
+				Header: smgp.Header{CommandID: smgp.CommandSubmitResp, SequenceID: 1},
+				MsgID:  tt.id,
+			}
+			if _, err := p.IEncode(); err == nil {
+				t.Fatal("invalid MsgID accepted")
+			}
+		})
+	}
 }

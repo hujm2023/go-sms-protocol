@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/hujm2023/go-sms-protocol/packet"
 )
@@ -80,7 +79,7 @@ type Options map[Tag]Option
 
 func (o Options) Add(opt Option) {
 	if o == nil {
-		o = make(Options)
+		return
 	}
 
 	o[Tag(opt.Tag)] = opt
@@ -122,6 +121,9 @@ func (o Options) Serialize() []byte {
 
 func (o Options) TP_udhi() uint8 {
 	if val, exist := o[TAG_TP_udhi]; exist {
+		if len(val.ValueBytes) == 0 {
+			return 0
+		}
 		return val.ValueBytes[0]
 	}
 	return 0
@@ -181,10 +183,6 @@ func ReadOptions(r *packet.Reader) Options {
 
 		r.ReadBytes(temp)
 		if e := r.Error(); e != nil {
-			if errors.Is(e, io.EOF) {
-				r.SetErrNil()
-				break
-			}
 			return nil
 		}
 
@@ -195,10 +193,6 @@ func ReadOptions(r *packet.Reader) Options {
 		value := make([]byte, length)
 		r.ReadBytes(value)
 		if e := r.Error(); e != nil {
-			if errors.Is(r.Error(), io.EOF) {
-				r.SetErrNil()
-				break
-			}
 			return nil
 		}
 

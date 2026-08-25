@@ -2,6 +2,7 @@ package sgip12
 
 import (
 	"bytes"
+	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,8 +41,6 @@ func TestSubmit(t *testing.T) {
 	// 实现接口级别的单测
 	a := new(Submit)
 	assert.Nil(t, a.IDecode(raw))
-	t.Log(a.CommandID.String())
-	t.Log(a.GetSequenceID())
 	submit := Submit{
 		Header: sgip.Header{
 			TotalLength: 193,
@@ -138,5 +137,120 @@ func TestSubmit_1(t *testing.T) {
 	// 实现接口级别的单测
 	a := new(Submit)
 	assert.Nil(t, a.IDecode(raw))
-	t.Log(string(a.MessageContent))
+	assert.Equal(t, []byte{
+		0, 't', 0, 'e', 0, 's', 0, 't', 0, 's', 0, 'm', 0, 's',
+		0, 's', 0, 'g', 0, 'i', 0, 'p', 0, '1', 0, '2', 0, '3',
+	}, a.MessageContent)
+}
+
+func submitWireFixture() []byte {
+	var body bytes.Buffer
+	writeFixed := func(value string, width int) {
+		field := make([]byte, width)
+		copy(field, value)
+		body.Write(field)
+	}
+	writeFixed("10690090", 21)
+	writeFixed("", 21)
+	body.WriteByte(1)
+	writeFixed("8613800138000", 21)
+	writeFixed("12345", 5)
+	writeFixed("svc", 10)
+	body.WriteByte(0)
+	writeFixed("", 6)
+	writeFixed("", 6)
+	body.WriteByte(0)
+	body.WriteByte(0)
+	body.WriteByte(1)
+	writeFixed("", 16)
+	writeFixed("", 16)
+	body.WriteByte(1)
+	body.WriteByte(0)
+	body.WriteByte(0)
+	body.WriteByte(0)
+	body.WriteByte(0)
+	var messageLength [4]byte
+	binary.BigEndian.PutUint32(messageLength[:], 3)
+	body.Write(messageLength[:])
+	body.WriteString("abc")
+	writeFixed("", 8)
+
+	data := make([]byte, sgip.HeaderLength, sgip.HeaderLength+body.Len())
+	binary.BigEndian.PutUint32(data[0:4], uint32(len(data)+body.Len()))
+	binary.BigEndian.PutUint32(data[4:8], uint32(sgip.SGIP_SUBMIT))
+	binary.BigEndian.PutUint32(data[8:12], 11)
+	binary.BigEndian.PutUint32(data[12:16], 22)
+	binary.BigEndian.PutUint32(data[16:20], 33)
+	return append(data, body.Bytes()...)
+}
+
+func TestSubmit_DecodeIsReusableAndRejectsLengthAnomalies(t *testing.T) {
+	raw := submitWireFixture()
+	var submit Submit
+	for i := 0; i < 2; i++ {
+		if err := submit.IDecode(raw); err != nil {
+			t.Fatalf("IDecode() pass %d error = %v", i+1, err)
+		}
+		if len(submit.UserNumber) != 1 || submit.UserNumber[0] != "8613800138000" {
+			t.Fatalf("decode pass %d UserNumber = %#v", i+1, submit.UserNumber)
+		}
+	}
+
+	tests := []struct {
+		name   string
+		mutate func([]byte)
+	}{
+		{
+			name: "user count exceeds encoded numbers",
+			mutate: func(data []byte) {
+				data[sgip.HeaderLength+21+21] = 2
+			},
+		},
+		{
+			name: "message length is too small",
+			mutate: func(data []byte) {
+				binary.BigEndian.PutUint32(data[152:156], 2)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := append([]byte(nil), raw...)
+			tt.mutate(data)
+			if err := new(Submit).IDecode(data); err == nil {
+				t.Fatal("IDecode() accepted malformed Submit")
+			}
+		})
+	}
+	if _, err := (&Submit{MessageLength: 2, MessageContent: []byte("x")}).IEncode(); err == nil {
+		t.Fatal("IEncode() accepted mismatched MessageLength")
+	}
+}
+
+func TestSubmit_GenEmptyResponsePreservesSequence(t *testing.T) {
+	submit := &Submit{
+		Header: sgip.Header{
+			CommandID: sgip.SGIP_SUBMIT,
+			Sequence:  [3]uint32{11, 22, 33},
+		},
+	}
+	response, ok := submit.GenEmptyResponse().(*SubmitResp)
+	if !ok {
+		t.Fatalf("GenEmptyResponse() type = %T, want *SubmitResp", submit.GenEmptyResponse())
+	}
+	if response.CommandID != sgip.SGIP_SUBMIT_REP || response.Sequence != submit.Sequence {
+		t.Fatalf("response header = %#v, want command %v and sequence %#v", response.Header, sgip.SGIP_SUBMIT_REP, submit.Sequence)
+	}
+	encoded, err := response.IEncode()
+	if err != nil {
+		t.Fatalf("response IEncode() error = %v", err)
+	}
+	pdu, err := DecodeSGIP12(encoded)
+	if err != nil {
+		t.Fatalf("DecodeSGIP12() error = %v", err)
+	}
+	decoded, ok := pdu.(*SubmitResp)
+	if !ok || decoded.Sequence != submit.Sequence {
+		t.Fatalf("decoded response = %T %#v", pdu, pdu)
+	}
 }
