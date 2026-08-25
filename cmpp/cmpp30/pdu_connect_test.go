@@ -16,7 +16,6 @@ type ConnectTestSuite struct {
 	suite.Suite
 	user       string
 	version    uint8
-	timestamp  string
 	sequenceID uint32
 	password   string
 

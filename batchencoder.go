@@ -113,10 +113,7 @@ func (b *BatchDataCodingEncoder) Build(ctx context.Context) (contents [][]byte, 
 
 	// Filter out those that cannot be encoded.
 	encoders = lo.Filter(encoders, func(encoder *encoder, _ int) bool {
-		if !encoder.canEncode {
-			return false
-		}
-		return true
+		return encoder.canEncode
 	})
 
 	// If none can be encoded and UCS2 is not included in the provided encodings,

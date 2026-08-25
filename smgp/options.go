@@ -190,8 +190,10 @@ func ReadOptions(r *packet.Reader) Options {
 		length := binary.BigEndian.Uint16(temp[2:4])
 
 		// read left value
-		value := make([]byte, length)
-		r.ReadBytes(value)
+		value := make([]byte, 0)
+		if length > 0 {
+			value = r.ReadNBytes(int(length))
+		}
 		if e := r.Error(); e != nil {
 			return nil
 		}
@@ -202,6 +204,4 @@ func ReadOptions(r *packet.Reader) Options {
 			ValueBytes: value,
 		}
 	}
-
-	return options
 }
