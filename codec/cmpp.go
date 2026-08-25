@@ -28,6 +28,9 @@ func (cc *CMPPCodec) Decode(c ConnReader) ([]byte, error) {
 	}
 
 	totalLen := int(binary.BigEndian.Uint32(totalLenBytes))
+	if err := validateCMPPCommandLength(uint32(totalLen)); err != nil {
+		return nil, err
+	}
 	if c.Size() < totalLen {
 		return nil, ErrPacketNotComplete
 	}
@@ -58,7 +61,11 @@ func (cc *CMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	totalLen := int(binary.BigEndian.Uint32(totalLenBytes))
+	declaredLength := binary.BigEndian.Uint32(totalLenBytes)
+	if err := validateCMPPCommandLength(declaredLength); err != nil {
+		return nil, err
+	}
+	totalLen := int(declaredLength)
 
 	left := make([]byte, totalLen)
 	_, err = io.ReadFull(c, left[cmpp.PacketTotalLengthBytes:])
@@ -69,4 +76,11 @@ func (cc *CMPPCodec) DecodeBlocked(c ConnReader) ([]byte, error) {
 	copy(left[:cmpp.PacketTotalLengthBytes], totalLenBytes)
 
 	return left, nil
+}
+
+func validateCMPPCommandLength(totalLen uint32) error {
+	if totalLen < cmpp.MinCMPPPduLength {
+		return cmpp.ErrInvalidPudLength
+	}
+	return nil
 }

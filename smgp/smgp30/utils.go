@@ -3,12 +3,27 @@ package smgp30
 import (
 	"bytes"
 	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"time"
 
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/smgp"
 )
+
+func decodeMsgID(msgID string) ([]byte, error) {
+	if len(msgID) != 20 {
+		return nil, fmt.Errorf("invalid MsgID length: got %d, want 20 hex characters", len(msgID))
+	}
+	decoded, err := hex.DecodeString(msgID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid MsgID: %w", err)
+	}
+	if len(decoded) != 10 {
+		return nil, fmt.Errorf("invalid MsgID length: decoded %d bytes, want 10", len(decoded))
+	}
+	return decoded, nil
+}
 
 // NewLogin ...
 func NewLogin(account, passwd string, seqID uint32) *Login {

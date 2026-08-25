@@ -506,6 +506,9 @@ func Pack(septets []byte) (dst []byte) {
 
 func Unpack(src []byte) (septets []byte) {
 	septets = make([]byte, 0, len(src))
+	if len(src) == 0 {
+		return septets
+	}
 	count := 0
 	remain := len(src) - count
 	for remain > 0 {

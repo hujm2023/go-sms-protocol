@@ -70,6 +70,10 @@ func DecodeCMPP20(data []byte) (sms.PDU, error) {
 		pdu = new(PduSubmit)
 	case cmpp.CommandSubmitResp:
 		pdu = new(PduSubmitResp)
+	case cmpp.CommandQuery:
+		pdu = new(PduQuery)
+	case cmpp.CommandQueryResp:
+		pdu = new(PduQueryResp)
 	case cmpp.CommandDeliver:
 		pdu = new(PduDeliver)
 	case cmpp.CommandDeliverResp:

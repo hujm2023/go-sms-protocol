@@ -1,6 +1,7 @@
 package smgp30
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -68,10 +69,48 @@ func TestDeliver(t *testing.T) {
 func TestDeliverRecvTimeFieldLengthError(t *testing.T) {
 	p := &Deliver{
 		Header:   smgp.Header{CommandID: smgp.CommandDeliver, SequenceID: 1},
+		MsgID:    "01020304050607080901",
 		RecvTime: strings.Repeat("r", 15),
 	}
 	_, err := p.IEncode()
 	requireFieldLengthError(t, err, "RecvTime", 15, 14)
+}
+
+func TestDeliverEncodeRejectsInconsistentMessageLength(t *testing.T) {
+	p := &Deliver{
+		Header:     smgp.Header{CommandID: smgp.CommandDeliver, SequenceID: 1},
+		MsgID:      "01020304050607080901",
+		MsgLength:  1,
+		MsgContent: nil,
+	}
+
+	if _, err := p.IEncode(); err == nil {
+		t.Fatal("inconsistent MsgLength accepted")
+	}
+}
+
+func TestDeliverRespRejectsInvalidMsgID(t *testing.T) {
+	tests := []struct {
+		name string
+		id   string
+	}{
+		{name: "empty", id: ""},
+		{name: "odd_hex", id: "0"},
+		{name: "short", id: "010203040506070809"},
+		{name: "long", id: "0102030405060708090102"},
+		{name: "non_hex", id: "0102030405060708090g"},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s_%q", tt.name, tt.id), func(t *testing.T) {
+			p := &DeliverResp{
+				Header: smgp.Header{CommandID: smgp.CommandDeliverResp, SequenceID: 1},
+				MsgID:  tt.id,
+			}
+			if _, err := p.IEncode(); err == nil {
+				t.Fatal("invalid MsgID accepted")
+			}
+		})
+	}
 }
 
 type DeliverRespTestSuite struct {

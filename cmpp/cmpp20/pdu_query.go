@@ -146,9 +146,9 @@ func (p *PduQueryResp) IEncode() ([]byte, error) {
 	b.WriteUint32(p.MtScs)
 	b.WriteUint32(p.MtWT)
 	b.WriteUint32(p.MtFL)
-	b.WriteUint32(p.MtScs)
-	b.WriteUint32(p.MtWT)
-	b.WriteUint32(p.MtFL)
+	b.WriteUint32(p.MoScs)
+	b.WriteUint32(p.MoWT)
+	b.WriteUint32(p.MoFL)
 
 	return b.BytesWithLength()
 }
@@ -167,9 +167,9 @@ func (p *PduQueryResp) IDecode(data []byte) error {
 	p.MtScs = b.ReadUint32()
 	p.MtWT = b.ReadUint32()
 	p.MtFL = b.ReadUint32()
-	p.MtScs = b.ReadUint32()
-	p.MtWT = b.ReadUint32()
-	p.MtFL = b.ReadUint32()
+	p.MoScs = b.ReadUint32()
+	p.MoWT = b.ReadUint32()
+	p.MoFL = b.ReadUint32()
 
 	return b.Error()
 }

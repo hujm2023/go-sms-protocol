@@ -76,11 +76,15 @@ func (d *Deliver) IDecode(data []byte) error {
 }
 
 func (d *Deliver) IEncode() ([]byte, error) {
+	if int(d.MsgLength) != len(d.MsgContent) {
+		return nil, fmt.Errorf("MsgLength=%d does not match MsgContent length=%d", d.MsgLength, len(d.MsgContent))
+	}
+
 	b := packet.NewPacketWriter()
 	defer b.Release()
 
 	smgp.WriteHeaderNoLength(d.Header, b)
-	msgID, err := hex.DecodeString(d.MsgID)
+	msgID, err := decodeMsgID(d.MsgID)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +177,7 @@ func (d *DeliverResp) IEncode() ([]byte, error) {
 	defer b.Release()
 
 	smgp.WriteHeaderNoLength(d.Header, b)
-	msgID, err := hex.DecodeString(d.MsgID)
+	msgID, err := decodeMsgID(d.MsgID)
 	if err != nil {
 		return nil, err
 	}

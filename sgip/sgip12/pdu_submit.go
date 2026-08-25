@@ -124,6 +124,7 @@ func (p *Submit) IDecode(data []byte) error {
 	p.SpNumber = b.ReadCStringN(21)
 	p.ChargeNumber = b.ReadCStringN(21)
 	p.UserCount = b.ReadUint8()
+	p.UserNumber = p.UserNumber[:0]
 	for i := 0; i < int(p.UserCount); i++ {
 		nubmer := b.ReadCStringN(21)
 		p.UserNumber = append(p.UserNumber, nubmer)
@@ -144,12 +145,18 @@ func (p *Submit) IDecode(data []byte) error {
 	p.MessageCoding = b.ReadUint8()
 	p.MessageType = b.ReadUint8()
 	p.MessageLength = b.ReadUint32()
+	if p.Header.TotalLength != uint32(len(data)) || b.Remaining() != int(p.MessageLength)+8 {
+		return sgip.ErrInvalidPudLength
+	}
 	p.MessageContent = b.ReadNBytes(int(p.MessageLength))
 	p.Reserved = b.ReadCStringN(8)
 	return b.Error()
 }
 
 func (p *Submit) IEncode() ([]byte, error) {
+	if uint32(len(p.MessageContent)) != p.MessageLength {
+		return nil, fmt.Errorf("message length %d does not match content length %d", p.MessageLength, len(p.MessageContent))
+	}
 	b := packet.NewPacketWriter()
 	defer b.Release()
 	sgip.WriteHeaderNoLength(p.Header, b)
@@ -200,7 +207,10 @@ func (s *Submit) GetCommand() sms.ICommander {
 
 func (s *Submit) GenEmptyResponse() sms.PDU {
 	return &SubmitResp{
-		Header: sgip.NewHeader(sgip.MaxHeaderRespLength, sgip.SGIP_SUBMIT_REP, s.GetSequenceID(), s.GetSequenceID()),
+		Header: sgip.Header{
+			CommandID: sgip.SGIP_SUBMIT_REP,
+			Sequence:  s.Sequence,
+		},
 	}
 }
 

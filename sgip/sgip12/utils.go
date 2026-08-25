@@ -37,6 +37,8 @@ func DecodeSGIP12(data []byte) (sms.PDU, error) {
 		pdu = new(BindResp)
 	case sgip.SGIP_UNBIND:
 		pdu = new(Unbind)
+	case sgip.SGIP_UNBIND_REP:
+		pdu = new(UnbindResp)
 	case sgip.SGIP_SUBMIT:
 		pdu = new(Submit)
 	case sgip.SGIP_SUBMIT_REP:

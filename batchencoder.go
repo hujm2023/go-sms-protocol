@@ -91,6 +91,9 @@ func (b *BatchDataCodingEncoder) Build(ctx context.Context) (contents [][]byte, 
 	if b == nil || b.content == "" || len(b.dataCodings) == 0 {
 		return nil, nil, fmt.Errorf("invalid batch encoder builder")
 	}
+	if err := validateBatchProtocolDataCodings(b.protocol, b.dataCodings, b.originDataCoding); err != nil {
+		return nil, datacoding.UnknownProtocolDataCoding, err
+	}
 
 	var hasUcs2 bool
 	encoders := make([]*encoder, 0, len(b.dataCodings)+1)
@@ -175,9 +178,25 @@ func (s *encoder) Run(ctx context.Context) {
 	var encoder datacoding.Codec
 	switch s.protocol {
 	case SMPP:
-		encoder = datacoding.NewSMPPCodec(s.msgFmt.(datacoding.SMPPDataCoding), s.content)
+		msgFmt, ok := s.msgFmt.(datacoding.SMPPDataCoding)
+		if !ok {
+			s.canEncode = false
+			s.reason = fmt.Sprintf("dataCoding %v is not valid for %s", s.msgFmt, s.protocol)
+			return
+		}
+		encoder = datacoding.NewSMPPCodec(msgFmt, s.content)
 	case CMPP:
-		encoder = datacoding.NewCMPPCodec(s.msgFmt.(datacoding.CMPPDataCoding), s.content)
+		msgFmt, ok := s.msgFmt.(datacoding.CMPPDataCoding)
+		if !ok {
+			s.canEncode = false
+			s.reason = fmt.Sprintf("dataCoding %v is not valid for %s", s.msgFmt, s.protocol)
+			return
+		}
+		encoder = datacoding.NewCMPPCodec(msgFmt, s.content)
+	default:
+		s.canEncode = false
+		s.reason = fmt.Sprintf("unknown protocol: %s", s.protocol)
+		return
 	}
 	if encoder == nil {
 		s.canEncode = false
@@ -220,6 +239,37 @@ func (s *encoder) Run(ctx context.Context) {
 	}
 
 	s.data = splitWithUDHI(encodedData, perMsgLength, s.frameKey)
+}
+
+func validateBatchProtocolDataCodings(protocol Protocol, dataCodings []datacoding.ProtocolDataCoding, origin datacoding.ProtocolDataCoding) error {
+	switch protocol {
+	case CMPP, SMPP:
+	default:
+		return fmt.Errorf("unknown protocol: %s", protocol)
+	}
+
+	for _, msgFmt := range dataCodings {
+		if datacoding.IsValidProtoDataCoding(msgFmt) && !batchDataCodingMatchesProtocol(protocol, msgFmt) {
+			return fmt.Errorf("dataCoding %s is not valid for %s", msgFmt.String(), protocol)
+		}
+	}
+	if datacoding.IsValidProtoDataCoding(origin) && !batchDataCodingMatchesProtocol(protocol, origin) {
+		return fmt.Errorf("origin dataCoding %s is not valid for %s", origin.String(), protocol)
+	}
+	return nil
+}
+
+func batchDataCodingMatchesProtocol(protocol Protocol, msgFmt datacoding.ProtocolDataCoding) bool {
+	switch protocol {
+	case CMPP:
+		_, ok := msgFmt.(datacoding.CMPPDataCoding)
+		return ok
+	case SMPP:
+		_, ok := msgFmt.(datacoding.SMPPDataCoding)
+		return ok
+	default:
+		return false
+	}
 }
 
 func (s *encoder) Result() (contents [][]byte, actualMsgFmt datacoding.ProtocolDataCoding, err error) {
