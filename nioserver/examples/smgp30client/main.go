@@ -236,6 +236,7 @@ func verifyLoginResponse(login *smgp30.Login, response *smgp30.LoginResp, passwo
 	binary.BigEndian.PutUint32(data, uint32(response.Status))
 	data = append(data, login.AuthenticatorClient...)
 	data = append(data, password...)
+	// SMGP protocol exception: 3.0.3 section 6.2.7 requires MD5 to verify AuthenticatorServer.
 	want := md5.Sum(data)
 	if subtle.ConstantTimeCompare([]byte(response.AuthenticatorServer), want[:]) != 1 {
 		return errors.New("server authenticator mismatch")

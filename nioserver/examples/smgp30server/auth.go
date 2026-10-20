@@ -42,6 +42,7 @@ func authenticateLogin(request *smgp30.Login, cfg config, now time.Time) uint32 
 
 func makeClientAuthenticator(account, password string, timestamp uint32) [md5.Size]byte {
 	data := []byte(account + "\x00\x00\x00\x00\x00\x00\x00" + password + fmt.Sprintf("%010d", timestamp))
+	// SMGP protocol exception: 3.0.3 section 6.2.2 requires MD5 for AuthenticatorClient.
 	return md5.Sum(data)
 }
 
@@ -55,6 +56,7 @@ func newLoginResponse(request *smgp30.Login, status uint32, password string) *sm
 		binary.BigEndian.PutUint32(data, status)
 		data = append(data, request.AuthenticatorClient...)
 		data = append(data, password...)
+		// SMGP protocol exception: 3.0.3 section 6.2.7 requires MD5 for AuthenticatorServer.
 		auth := md5.Sum(data)
 		response.AuthenticatorServer = string(auth[:])
 	}

@@ -66,3 +66,20 @@ jobs:
 
       - name: Analyze with CodeQL
         uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          output: ${{ runner.temp }}/codeql-raw
+          upload: failure-only
+
+      - name: Validate SMGP protocol exceptions
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_*.py'
+
+      - name: Apply reviewed SMGP wire-authentication exceptions
+        run: >-
+          python3 .github/scripts/filter_smgp_auth_alerts.py
+          "${{ runner.temp }}/codeql-raw/go.sarif"
+          "${{ runner.temp }}/codeql-reviewed/go.sarif"
+
+      - name: Upload reviewed CodeQL results
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          sarif_file: ${{ runner.temp }}/codeql-reviewed/go.sarif
