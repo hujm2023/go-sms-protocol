@@ -125,6 +125,10 @@ The library does not maintain cross-segment state or assemble a complete message
 
 See the [runnable CMPP 2.0 server example](nioserver/examples/cmpp20server) for authentication, submit handling, simulated delivery receipts, heartbeats, and graceful shutdown.
 
+The [SMGP 3.0 server and client examples](nioserver/examples/smgp30server) demonstrate the same flow over a single transmit-mode connection, including receipt acknowledgements. Their README also explains why SGIP requires an SP listener for gateway-initiated receipt connections.
+
+The [SMPP 3.4 examples](nioserver/examples/smpp34server) use a transceiver session for submission, receipts, and heartbeats. The [SGIP 1.2 examples](nioserver/examples/sgip12server) demonstrate submission followed by a separately authenticated gateway callback to an SP listener, preserving all twelve bytes of the submission sequence.
+
 Important lifecycle rules:
 
 - `Run` binds and serves synchronously; the application owns process signals.
