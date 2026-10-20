@@ -70,6 +70,30 @@ func (s *ConnectTestSuite) TestConnect_IEncode() {
 	s.Equal(string(cmpp.GenConnectAuth(c.SourceAddr, s.password, a)), c.AuthenticatorSource)
 }
 
+func TestConnectIEncodeShortSourceAddr(t *testing.T) {
+	connect := &Connect{
+		Header:              cmpp.NewHeader(0, cmpp.CommandConnect, 0x17),
+		SourceAddr:          "90001",
+		AuthenticatorSource: string(cmpp.GenConnectAuth("90001", "abcdef", "1021080510")),
+		Version:             cmpp.Version30,
+		Timestamp:           1021080510,
+	}
+	expected := []byte{
+		0x00, 0x00, 0x00, 0x27, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x17,
+		0x39, 0x30, 0x30, 0x30, 0x31, 0x00,
+		0x87, 0xde, 0x11, 0x45, 0xd8, 0xae, 0xa7, 0x07,
+		0x53, 0x9c, 0x9d, 0x52, 0x59, 0xfd, 0x89, 0x32,
+		0x30, 0x3c, 0xdc, 0x73, 0xbe,
+	}
+	data, err := connect.IEncode()
+	if err != nil {
+		t.Fatalf("IEncode() error = %v", err)
+	}
+	if !bytes.Equal(data, expected) {
+		t.Fatalf("IEncode() = %x, want %x", data, expected)
+	}
+}
+
 func (s *ConnectTestSuite) TestConnect_GenEmptyResponse() {
 	c := new(Connect)
 	assert.Nil(s.T(), c.IDecode(s.valueBytes))
