@@ -1,9 +1,6 @@
 package cmpp20
 
-//goland:noinspection WeakCrypto
 import (
-	"bytes"
-	"crypto/md5"
 	"strconv"
 	"time"
 
@@ -14,18 +11,10 @@ import (
 // NewConnect creates a new PduConnect PDU.
 func NewConnect(account, passwd string, seqID uint32) *PduConnect {
 	t, ts := now()
-	md5Bytes := md5.Sum(
-		bytes.Join([][]byte{
-			[]byte(account),
-			make([]byte, 9),
-			[]byte(passwd),
-			[]byte(t),
-		},
-			nil))
 	connectPdu := &PduConnect{
 		Header:              cmpp.NewHeader(0, cmpp.CommandConnect, seqID),
 		SourceAddr:          account,
-		AuthenticatorSource: string(md5Bytes[:]),
+		AuthenticatorSource: string(cmpp.GenConnectAuth(account, passwd, t)),
 		Version:             cmpp.Version20,
 		Timestamp:           ts,
 	}

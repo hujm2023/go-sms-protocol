@@ -3,6 +3,7 @@ package cmpp
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -64,6 +65,73 @@ func TestGenConnectAuth(t *testing.T) {
 	} {
 		auth := GenConnectAuth(item.user, item.password, item.timestamp)
 		assert.Equal(t, item.expectAuthString, auth)
+	}
+}
+
+func TestGenConnectAuthSourceAddrPadding(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		account   string
+		password  string
+		timestamp string
+		expected  string
+	}{
+		{
+			name:      "five byte account",
+			account:   "90001",
+			password:  "abcdef",
+			timestamp: "1021080510",
+			expected:  "87de1145d8aea707539c9d5259fd8932",
+		},
+		{
+			name:      "one byte account",
+			account:   "9",
+			password:  "abcdef",
+			timestamp: "1021080510",
+			expected:  "329a7370dc34c33cc1ccb1021c42ba56",
+		},
+		{
+			name:      "short password",
+			account:   "90001",
+			password:  "abc",
+			timestamp: "1021080510",
+			expected:  "448495caada4bcce985e50c4e15b84ea",
+		},
+		{
+			name:      "long password",
+			account:   "90001",
+			password:  "abcdefgh",
+			timestamp: "1021080510",
+			expected:  "d068b6aabe600081ab8914dbd046152b",
+		},
+		{
+			name:      "six byte account with short password",
+			account:   "900001",
+			password:  "abc",
+			timestamp: "1021080510",
+			expected:  "0698554c8c3c601958067183d8fc42f7",
+		},
+		{
+			name:      "timestamp with leading zero",
+			account:   "90001",
+			password:  "abcdef",
+			timestamp: "0121080510",
+			expected:  "6564e65ee831d7f2842438d4ca59a670",
+		},
+		{
+			name:      "already padded account",
+			account:   "90001\x00",
+			password:  "abcdef",
+			timestamp: "1021080510",
+			expected:  "87de1145d8aea707539c9d5259fd8932",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			auth := GenConnectAuth(test.account, test.password, test.timestamp)
+			if got := hex.EncodeToString(auth); got != test.expected {
+				t.Fatalf("GenConnectAuth() = %s, want %s", got, test.expected)
+			}
+		})
 	}
 }
 

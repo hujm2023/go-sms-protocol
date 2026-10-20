@@ -33,10 +33,16 @@ func TimeStamp2Str(t uint32) string {
 
 // GenConnectAuth generates the AuthenticatorSource field for the CMPP CONNECT PDU.
 // It calculates the MD5 hash of (SourceAddr + 9 bytes of zeros + password + Timestamp).
+// Short SourceAddr values are right-padded with zero bytes to 6 bytes before hashing.
 func GenConnectAuth(account string, password string, timestampStr string) []byte {
+	sourceAddr := []byte(account)
+	if len(sourceAddr) < 6 {
+		sourceAddr = append(sourceAddr, make([]byte, 6-len(sourceAddr))...)
+	}
+
 	md5Bytes := md5.Sum(
 		bytes.Join([][]byte{
-			[]byte(account),
+			sourceAddr,
 			make([]byte, 9),
 			[]byte(password),
 			[]byte(timestampStr),
