@@ -115,12 +115,12 @@ func TestCallbackRejectsWrongNodeWithMatchingCounter(t *testing.T) {
 	h := &callbackHandler{cfg: cfg, expected: [3]uint32{3000000001, 1020123456, 2}, result: make(chan error, 1)}
 	conn := &fakeCallbackConn{session: callbackSession{bound: true}}
 	report := &sgip12.Report{Header: sgip.Header{CommandID: sgip.SGIP_REPORT, Sequence: [3]uint32{2000000001, 1020123457, 7}}, SubmitSequence: [3]uint32{3000000002, 1020123456, 2}, UserNumber: cfg.destination}
-	data, err := h.handleConnection(context.Background(), conn, report)
+	_, err = h.handleConnection(context.Background(), conn, report)
 	if err == nil {
 		t.Fatal("receipt matched only the last four bytes of the sequence")
 	}
 	var ack sgip12.ReportResp
-	if err := ack.IDecode(data); err != nil {
+	if err := ack.IDecode(conn.final); err != nil {
 		t.Fatal(err)
 	}
 	if ack.Result != sgip.STAT_ERSEQ || conn.session.reportSeen {
@@ -148,12 +148,12 @@ func TestCallbackRejectsWrongCredentialsAndDirection(t *testing.T) {
 			conn := &fakeCallbackConn{}
 			p := sgip12.NewBind("gw-demo", tt.password, 2000000001, 1)
 			p.Type = tt.kind
-			data, err := h.bind(conn, p)
+			_, err := h.bind(context.Background(), conn, p)
 			if err == nil {
 				t.Fatal("invalid callback authenticated")
 			}
 			var ack sgip12.BindResp
-			if err := ack.IDecode(data); err != nil {
+			if err := ack.IDecode(conn.final); err != nil {
 				t.Fatal(err)
 			}
 			if ack.Result != tt.want || conn.session.bound {

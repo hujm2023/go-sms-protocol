@@ -36,7 +36,7 @@ func (h *callbackHandler) handle(ctx context.Context, pdu protocol.PDU) ([]byte,
 
 func (h *callbackHandler) handleConnection(ctx context.Context, conn nioserver.ISMSConn[callbackSession], pdu protocol.PDU) ([]byte, error) {
 	if bind, ok := pdu.(*sgip12.Bind); ok {
-		return h.bind(conn, bind)
+		return h.bind(ctx, conn, bind)
 	}
 	session := conn.GetBizData()
 	if !session.bound {
@@ -57,8 +57,7 @@ func (h *callbackHandler) handleConnection(ctx context.Context, conn nioserver.I
 		}
 		if response.Result != sgip.STAT_OK {
 			err := errors.New("callback report does not match the submitted message or success state")
-			h.finish(err)
-			return data, err
+			return h.reject(ctx, conn, data, err)
 		}
 		session.reportSeen = true
 		conn.SetBizData(session)
@@ -79,7 +78,7 @@ func (h *callbackHandler) handleConnection(ctx context.Context, conn nioserver.I
 	}
 }
 
-func (h *callbackHandler) bind(conn nioserver.ISMSConn[callbackSession], p *sgip12.Bind) ([]byte, error) {
+func (h *callbackHandler) bind(ctx context.Context, conn nioserver.ISMSConn[callbackSession], p *sgip12.Bind) ([]byte, error) {
 	response := p.GenEmptyResponse().(*sgip12.BindResp)
 	switch {
 	case conn.GetBizData().bound:
@@ -97,9 +96,21 @@ func (h *callbackHandler) bind(conn nioserver.ISMSConn[callbackSession], p *sgip
 	}
 	if response.Result != sgip.STAT_OK {
 		err := errors.New("gateway callback bind rejected")
-		h.finish(err)
-		return data, err
+		return h.reject(ctx, conn, data, err)
 	}
 	conn.SetBizData(callbackSession{bound: true})
 	return data, nil
+}
+
+func (h *callbackHandler) reject(
+	ctx context.Context,
+	conn nioserver.ISMSConn[callbackSession],
+	data []byte,
+	reason error,
+) ([]byte, error) {
+	// finish lets runClient shut down the listener. Flush the rejection first;
+	// returning response bytes after signalling would race with that shutdown.
+	err := errors.Join(reason, conn.WriteAndClose(ctx, data))
+	h.finish(err)
+	return nil, err
 }
