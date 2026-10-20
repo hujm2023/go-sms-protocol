@@ -125,6 +125,10 @@ SMPP_ENQUIRE_LINK sequence=42
 
 鉴权、提交处理、模拟状态报告、链路探活和优雅关闭的完整接线方式，可以参考[可运行的 CMPP 2.0 服务端示例](nioserver/examples/cmpp20server)。
 
+[SMGP 3.0 服务端与客户端示例](nioserver/examples/smgp30server)展示了通过同一条收发模式连接完成提交、回执与确认的流程，并说明了 SGIP 为什么需要由 SP 监听网关发起的回执连接。
+
+[SMPP 3.4 示例](nioserver/examples/smpp34server)通过 transceiver 会话完成提交、回执和探活；[SGIP 1.2 示例](nioserver/examples/sgip12server)展示提交连接关闭后，网关如何另建并鉴权回连、向 SP 监听器推送回执，并使用完整 12 字节序列号关联原始提交。
+
 主要生命周期约束如下：
 
 - `Run` 负责绑定并同步运行；进程信号由宿主应用管理。

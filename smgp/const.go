@@ -10,7 +10,7 @@ const (
 	MinSMGPPduLength  = HeaderLength // smgp PduSMGP 最小的长度
 	MaxExitRespLength = HeaderLength
 
-	MaxActiveTestRespLength = 13
+	MaxActiveTestRespLength = HeaderLength
 	MaxDeliverRespLength    = HeaderLength + 10 + 4
 )
 

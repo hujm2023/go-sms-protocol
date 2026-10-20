@@ -72,7 +72,8 @@ func (a *ActiveTest) String() string {
 type ActiveTestResp struct {
 	smgp.Header
 
-	// 1 字节，保留字段
+	// Deprecated: SMGP 3.0.3 §5.2.2.5.2 defines no response body.
+	// Kept for source compatibility; it is not encoded on the wire.
 	Reserved uint8
 }
 
@@ -81,7 +82,6 @@ func (pr *ActiveTestResp) IEncode() ([]byte, error) {
 	defer buf.Release()
 
 	smgp.WriteHeaderNoLength(pr.Header, buf)
-	buf.WriteUint8(pr.Reserved)
 
 	return buf.BytesWithLength()
 }
@@ -95,7 +95,7 @@ func (pr *ActiveTestResp) IDecode(data []byte) error {
 	defer buf.Release()
 
 	pr.Header = smgp.ReadHeader(buf)
-	pr.Reserved = buf.ReadUint8()
+	pr.Reserved = 0
 
 	return buf.Error()
 }

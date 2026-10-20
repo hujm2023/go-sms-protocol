@@ -35,7 +35,7 @@ func (p *Login) IDecode(data []byte) error {
 
 	p.Header = smgp.ReadHeader(buf)
 	p.ClientID = buf.ReadCStringN(8)
-	p.AuthenticatorClient = buf.ReadCStringN(16)
+	p.AuthenticatorClient = buf.ReadCStringNWithoutTrim(16)
 	p.LoginMode = buf.ReadUint8()
 	p.Timestamp = buf.ReadUint32()
 	p.Version = buf.ReadUint8()
@@ -112,7 +112,7 @@ func (c *LoginResp) IDecode(data []byte) error {
 
 	c.Header = smgp.ReadHeader(buf)
 	c.Status = LoginRespStatus(buf.ReadUint32())
-	c.AuthenticatorServer = buf.ReadCStringN(16)
+	c.AuthenticatorServer = buf.ReadCStringNWithoutTrim(16)
 	c.ServerVersion = buf.ReadUint8()
 	return buf.Error()
 }

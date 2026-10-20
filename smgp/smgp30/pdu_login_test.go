@@ -129,7 +129,7 @@ func (s *LoginRespTestSuite) TestLoginResp_IDecode() {
 	s.Equal(LoginRespStatusSuccess, c.Status)
 	s.Equal(LoginRespStatusSuccess.String(), c.Status.String())
 	s.Equal(uint8(0x30), c.ServerVersion)
-	s.Equal("AuthServer", c.AuthenticatorServer)
+	s.Equal("AuthServer\x00\x00\x00\x00\x00\x00", c.AuthenticatorServer)
 	s.T().Log(c.String())
 }
 
