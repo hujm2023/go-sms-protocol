@@ -5,6 +5,16 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Keep Go 1.20 support. These release lines require Go 1.23 or newer;
+    # compatible patch releases remain eligible for updates.
+    # Revisit these bounds when the minimum supported Go version changes.
+    ignore:
+      - dependency-name: golang.org/x/sync
+        versions: [">=0.12.0"]
+      - dependency-name: golang.org/x/text
+        versions: [">=0.23.0"]
+      - dependency-name: golang.org/x/sys
+        versions: [">=0.31.0"]
     groups:
       gomod-minor-patch:
         update-types:
