@@ -1,6 +1,6 @@
 module github.com/hujm2023/go-sms-protocol
 
-go 1.26.0
+go 1.20
 
 require (
 	github.com/bytedance/gopkg v0.1.4
@@ -9,8 +9,8 @@ require (
 	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.12.1
 	github.com/valyala/bytebufferpool v1.0.0
-	golang.org/x/sync v0.24.0
-	golang.org/x/text v0.43.0
+	golang.org/x/sync v0.11.0
+	golang.org/x/text v0.22.0
 )
 
 require (
