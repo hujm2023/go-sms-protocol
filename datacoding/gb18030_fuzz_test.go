@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 const maxGB18030FuzzInput = 512
@@ -13,12 +15,18 @@ const maxGB18030FuzzInput = 512
 // encoding, and arbitrary/malformed GB18030 byte streams.  The x/text
 // transformer replacement-decodes malformed input, so arbitrary wire bytes
 // are checked for canonical fixed-point behavior instead of byte equality.
+// Some valid private-use runes also do not round-trip through x/text
+// (https://go.dev/issue/62063). Check text conversion against that dependency
+// instead of assuming every valid UTF-8 input is preserved.
 func FuzzGB18030EncodeDecodeStability(f *testing.F) {
 	for _, seed := range [][]byte{
 		{},
 		[]byte("Hello world 12345"),
 		[]byte("[ByteDance] 我的头发长，天下我为王"),
 		[]byte("GB18030: €𠀀"),
+		[]byte("\ue805"),
+		[]byte("\ue000\ue7c7\ue864"),
+		[]byte("中文\ue805€𠀀"),
 		[]byte{0xbb, 0xa8, 0xbc, 0xe4, 0xd2, 0xbb},
 		[]byte{0x81},
 		[]byte{0xfe, 0x30, 0xff, 0x20},
@@ -50,8 +58,19 @@ func FuzzGB18030EncodeDecodeStability(f *testing.F) {
 			if !utf8.Valid(decoded) {
 				t.Fatalf("GB18030 decoder returned invalid UTF-8 %x", decoded)
 			}
-			if utf8.Valid(input) && !bytes.Equal(decoded, input) {
-				t.Fatalf("valid UTF-8 text changed: got %q, want %q", decoded, input)
+			referenceEncoded, err := simplifiedchinese.GB18030.NewEncoder().Bytes(input)
+			if err != nil {
+				t.Fatalf("reference GB18030 encode failed: %v", err)
+			}
+			if !bytes.Equal(encoded, referenceEncoded) {
+				t.Fatalf("GB18030 encoding differs from x/text: got %x, want %x", encoded, referenceEncoded)
+			}
+			referenceDecoded, err := simplifiedchinese.GB18030.NewDecoder().Bytes(referenceEncoded)
+			if err != nil {
+				t.Fatalf("reference GB18030 decode failed: %v", err)
+			}
+			if !bytes.Equal(decoded, referenceDecoded) {
+				t.Fatalf("GB18030 decoded text differs from x/text: got %q, want %q", decoded, referenceDecoded)
 			}
 			canonical, err := GB18030(decoded).Encode()
 			if err != nil {
