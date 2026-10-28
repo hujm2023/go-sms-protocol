@@ -137,6 +137,20 @@ Important lifecycle rules:
 - The default per-connection handler limit is one, preserving request/response order. Raising it opts into concurrent handling and possible response reordering.
 - Use `ISMSConn.Write` or `WriteAndClose` for error-returning writes. `AsyncWrite` is deprecated.
 
+### Logging migration in v0.14.0
+
+`nioserver` and all examples now use `github.com/hujm2023/go-sms-protocol/logger`. The external `github.com/hujm2023/hlog` dependency has been removed.
+
+This is a breaking change to `nioserver.WithLogger`: it now accepts the project's `logger.FullLogger`. Custom loggers must implement `SetLevel(logger.Level)` instead of `SetLevel(hlog.Level)`; the remaining logging methods are unchanged.
+
+For applications using the old default logger, replace the import while retaining its alias:
+
+```go
+import hlog "github.com/hujm2023/go-sms-protocol/logger"
+```
+
+Existing calls such as `hlog.DefaultLogger()` and `hlog.SetLevel(hlog.LevelInfo)` can then remain unchanged. Without `WithLogger`, or with `WithLogger[T](nil)`, a new server uses the project's default logger. Configure `logger.SetLogger`, `logger.SetLevel`, and `logger.SetOutput` before constructing servers or starting concurrent work. These settings now apply to both protocol helpers and servers using that default logger; they do not configure netpoll's internal logger.
+
 ## Scope and limitations
 
 - There is no production-ready SMS gateway, SMPP/CMPP client session manager, persistence layer, routing policy, or delivery retry engine. The runnable server under `nioserver/examples` is an integration example.

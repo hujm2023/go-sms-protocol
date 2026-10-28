@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hujm2023/hlog"
-
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/smgp/smgp30"
 )
@@ -92,7 +91,7 @@ func TestHeartbeatManagerCheckConnection(t *testing.T) {
 	conn := newFakeSMSConn()
 	manager := &heartbeatManager{
 		ctx:          context.Background(),
-		logger:       hlog.DefaultLogger(),
+		logger:       smslog.DefaultLogger(),
 		maxMissed:    3,
 		writeTimeout: time.Second,
 		connections:  make(map[nioserver.ISMSConn[connectionSession]]struct{}),
@@ -130,7 +129,7 @@ func TestHeartbeatManagerCheckConnection(t *testing.T) {
 
 func TestReceiptDispatcherPushesBinaryReportAndStops(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	d := newReceiptDispatcher(ctx, hlog.DefaultLogger(), 1, 100, time.Millisecond, time.Millisecond, time.Second)
+	d := newReceiptDispatcher(ctx, smslog.DefaultLogger(), 1, 100, time.Millisecond, time.Millisecond, time.Second)
 	t.Cleanup(func() {
 		cancel()
 		waitCtx, stop := context.WithTimeout(context.Background(), time.Second)

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/cloudwego/netpoll"
-	"github.com/hujm2023/hlog"
 
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/smgp"
 	"github.com/hujm2023/go-sms-protocol/smgp/smgp30"
@@ -31,7 +31,7 @@ type serverHandler struct {
 	account    string
 	password   string
 	authSkew   time.Duration
-	logger     hlog.FullLogger
+	logger     smslog.FullLogger
 	receipts   *receiptDispatcher
 	heartbeats *heartbeatManager
 	messageIDs messageIDGenerator

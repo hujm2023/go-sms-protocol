@@ -13,10 +13,10 @@ import (
 	"time"
 
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver/examples/internal/exampleutil"
 	"github.com/hujm2023/go-sms-protocol/sgip"
 	"github.com/hujm2023/go-sms-protocol/sgip/sgip12"
-	"github.com/hujm2023/hlog"
 )
 
 func startNetworkServer(t *testing.T, callback string) string {
@@ -28,7 +28,7 @@ func startNetworkServer(t *testing.T, callback string) string {
 	ctx, cancel := context.WithCancel(context.Background())
 	ready := make(chan net.Addr, 1)
 	result := make(chan error, 1)
-	go func() { result <- run(ctx, cfg, hlog.DefaultLogger(), func(address net.Addr) { ready <- address }) }()
+	go func() { result <- run(ctx, cfg, smslog.DefaultLogger(), func(address net.Addr) { ready <- address }) }()
 	t.Cleanup(func() {
 		cancel()
 		select {
