@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/cloudwego/netpoll"
-	"github.com/hujm2023/hlog"
 
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 )
 
@@ -62,8 +62,8 @@ func realMain(args []string, lookupEnv func(string) (string, bool), stderr io.Wr
 	// 而不是让进程直接退出并丢失正在写出的响应。
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := run(signalCtx, cfg, hlog.DefaultLogger()); err != nil {
-		hlog.Errorf("cmpp 2.0 example server stopped with error: %v", err)
+	if err := run(signalCtx, cfg, smslog.DefaultLogger()); err != nil {
+		smslog.Errorf("cmpp 2.0 example server stopped with error: %v", err)
 		return 1
 	}
 	return 0
@@ -147,7 +147,7 @@ func parseConfig(
 	return cfg, nil
 }
 
-func run(ctx context.Context, cfg config, logger hlog.FullLogger) error {
+func run(ctx context.Context, cfg config, logger smslog.FullLogger) error {
 	// 后台回执和服务端探活必须使用独立的服务级 context。
 	// nioserver 的请求 context 会随单次处理或连接关闭而取消，不能承载异步任务。
 	serviceCtx, stopServices := context.WithCancel(context.Background())

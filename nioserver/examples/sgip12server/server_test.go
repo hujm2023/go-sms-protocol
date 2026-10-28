@@ -8,11 +8,11 @@ import (
 	"time"
 
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/nioserver/examples/internal/exampleutil"
 	"github.com/hujm2023/go-sms-protocol/sgip"
 	"github.com/hujm2023/go-sms-protocol/sgip/sgip12"
-	"github.com/hujm2023/hlog"
 )
 
 type fakeConn struct {
@@ -39,7 +39,7 @@ func TestBindTypeCredentialsAndFullSequence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &serverHandler{cfg: config{Credentials: exampleutil.Credentials{Account: "sp-demo", Password: "sp-secret"}}, logger: hlog.DefaultLogger()}
+			h := &serverHandler{cfg: config{Credentials: exampleutil.Credentials{Account: "sp-demo", Password: "sp-secret"}}, logger: smslog.DefaultLogger()}
 			request := sgip12.NewBind("sp-demo", tt.password, 3000000001, 5)
 			request.Type = tt.loginType
 			conn := &fakeConn{session: connectionSession{bound: tt.bound}}
@@ -70,7 +70,7 @@ func TestSubmitReceiptBatchIsOwnedAndCorrelated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	jobs := make(chan receiptJob, 1)
-	h := &serverHandler{logger: hlog.DefaultLogger()}
+	h := &serverHandler{logger: smslog.DefaultLogger()}
 	h.receipts = exampleutil.NewQueue(ctx, 1, 1, func(_ context.Context, j receiptJob) { jobs <- j })
 	defer func() { cancel(); _ = h.receipts.Wait(context.Background()) }()
 	request := validSubmit()

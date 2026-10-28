@@ -9,9 +9,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/hujm2023/hlog"
-
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/nioserver/examples/internal/exampleutil"
 	"github.com/hujm2023/go-sms-protocol/sgip"
@@ -29,7 +28,7 @@ type receiptJob struct {
 
 type serverHandler struct {
 	cfg      config
-	logger   hlog.FullLogger
+	logger   smslog.FullLogger
 	receipts *exampleutil.Queue[receiptJob]
 	sequence atomic.Uint32
 }

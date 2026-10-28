@@ -14,9 +14,9 @@ import (
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/cloudwego/netpoll"
-	"github.com/hujm2023/hlog"
 
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 )
 
 var (
@@ -82,7 +82,9 @@ func WithRefreshCtxWhenRead[T any](f RefreshCtxFunc) ServerOption[T] {
 	}
 }
 
-func WithLogger[T any](logger hlog.FullLogger) ServerOption[T] {
+// WithLogger sets the server logger. A nil logger uses the default logger from
+// github.com/hujm2023/go-sms-protocol/logger when the server is constructed.
+func WithLogger[T any](logger smslog.FullLogger) ServerOption[T] {
 	return func(s *BaseServer[T]) {
 		s.logger = logger
 	}
@@ -184,7 +186,7 @@ type BaseServer[T any] struct {
 	listenerFactory func(network, address string) (netpoll.Listener, error)
 	eventLoop       netpoll.EventLoop
 	workerpool      gopool.Pool
-	logger          hlog.FullLogger
+	logger          smslog.FullLogger
 
 	stateMu         sync.Mutex
 	state           serverState
@@ -214,7 +216,7 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 	server := &BaseServer[T]{
 		network:            network,
 		address:            address,
-		logger:             hlog.DefaultLogger(),
+		logger:             smslog.DefaultLogger(),
 		maxHandlers:        defaultMaxHandlers,
 		maxHandlersPerConn: defaultMaxHandlersPerConn,
 		maxPendingWrites:   defaultMaxPendingWrites,
@@ -237,7 +239,7 @@ func NewBaseServer[T any](network, address string, opts ...ServerOption[T]) (*Ba
 		return nil, errors.New("nioserver: handle func is nil")
 	}
 	if server.logger == nil {
-		server.logger = hlog.DefaultLogger()
+		server.logger = smslog.DefaultLogger()
 	}
 	if server.maxHandlers < 1 {
 		return nil, errors.New("nioserver: max in-flight handlers must be positive")

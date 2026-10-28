@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/nioserver/examples/internal/exampleutil"
 	"github.com/hujm2023/go-sms-protocol/smpp"
 	"github.com/hujm2023/go-sms-protocol/smpp/smpp34"
-	"github.com/hujm2023/hlog"
 )
 
 type fakeConn struct {
@@ -38,7 +38,7 @@ func (c *fakeConn) Write(_ context.Context, data []byte) error {
 func newHandler() *serverHandler {
 	return &serverHandler{
 		cfg:        config{Credentials: exampleutil.Credentials{Account: "demo", Password: "secret34"}},
-		logger:     hlog.DefaultLogger(),
+		logger:     smslog.DefaultLogger(),
 		heartbeats: &heartbeatManager{ctx: context.Background(), connections: make(map[nioserver.ISMSConn[connectionSession]]struct{})},
 	}
 }
@@ -167,7 +167,7 @@ func TestReceiptWireFields(t *testing.T) {
 }
 
 func TestEnquireLinkSequenceAndTimeout(t *testing.T) {
-	manager := &heartbeatManager{ctx: context.Background(), logger: hlog.DefaultLogger(), maxMissed: 3, writeTimeout: time.Second, connections: make(map[nioserver.ISMSConn[connectionSession]]struct{})}
+	manager := &heartbeatManager{ctx: context.Background(), logger: smslog.DefaultLogger(), maxMissed: 3, writeTimeout: time.Second, connections: make(map[nioserver.ISMSConn[connectionSession]]struct{})}
 	conn := &fakeConn{sequence: smpp.SEQUENCE_NUM_END}
 	manager.checkConnection(conn)
 	var heartbeat smpp34.EnquireLink

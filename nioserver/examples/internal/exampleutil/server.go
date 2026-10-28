@@ -7,8 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/hujm2023/hlog"
-
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 )
 
@@ -21,7 +20,7 @@ type Lifecycle struct {
 }
 
 // Run waits for binding, reports readiness, and owns the Run goroutine through shutdown.
-func Run[T any](ctx context.Context, server *nioserver.BaseServer[T], logger hlog.FullLogger, life Lifecycle) error {
+func Run[T any](ctx context.Context, server *nioserver.BaseServer[T], logger smslog.FullLogger, life Lifecycle) error {
 	result := make(chan error, 1)
 	go func() { result <- server.Run() }()
 	finish := func(runErr error, waitRun bool) error {

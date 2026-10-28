@@ -4,8 +4,6 @@ github.com/cloudwego/gopkg v0.1.4 h1:EoQiCG4sTonTPHxOGE0VlQs+sQR+Hsi2uN0qqwu8O50
 github.com/cloudwego/gopkg v0.1.4/go.mod h1:FQuXsRWRsSqJLsMVd5SYzp8/Z1y5gXKnVvRrWUOsCMI=
 github.com/cloudwego/netpoll v0.7.5 h1:VG/Oq2ffpzbk0QfbEz3cUPnLdjIlApt5rG5UNXuh16Y=
 github.com/cloudwego/netpoll v0.7.5/go.mod h1:KiNpLI5MX9vR0xj4gKqyioOrHlp8G0XBMqIV9HsvMCc=
-github.com/hujm2023/hlog v0.3.0 h1:7Jsf33t59/Nt1NIy4MfsHE9iw2Uu6SHnulKGgEEqx7s=
-github.com/hujm2023/hlog v0.3.0/go.mod h1:6Go1ymhUjl001dYLcCzFx0J84+mCYnBTX72cKPCrOFU=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
 github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=

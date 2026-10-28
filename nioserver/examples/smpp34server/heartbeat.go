@@ -3,19 +3,20 @@ package main
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
+
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/smpp"
 	"github.com/hujm2023/go-sms-protocol/smpp/smpp34"
-	"github.com/hujm2023/hlog"
-	"sync"
-	"time"
 )
 
 // heartbeatManager 用一个定时器扫描全部已鉴权连接。
 // 相比“每连接一个 ticker”，这种方式更容易统一停止，也能避免连接数增长时创建大量定时器。
 type heartbeatManager struct {
 	ctx          context.Context
-	logger       hlog.FullLogger
+	logger       smslog.FullLogger
 	interval     time.Duration
 	maxMissed    int
 	writeTimeout time.Duration
@@ -26,7 +27,7 @@ type heartbeatManager struct {
 
 func newHeartbeatManager(
 	ctx context.Context,
-	logger hlog.FullLogger,
+	logger smslog.FullLogger,
 	interval time.Duration,
 	maxMissed int,
 	writeTimeout time.Duration,

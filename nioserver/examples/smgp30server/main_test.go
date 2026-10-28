@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hujm2023/hlog"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 )
 
 func testEnvironment(name string) (string, bool) {
@@ -66,7 +66,7 @@ func TestRunRejectsInvalidListenerWithoutLeakingWorkers(t *testing.T) {
 	cfg.listenAddress = "invalid-address"
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := run(ctx, cfg, hlog.DefaultLogger()); err == nil {
+	if err := run(ctx, cfg, smslog.DefaultLogger()); err == nil {
 		t.Fatal("invalid listener did not report startup failure")
 	}
 }
