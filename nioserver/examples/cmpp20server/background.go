@@ -9,10 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hujm2023/hlog"
-
 	"github.com/hujm2023/go-sms-protocol/cmpp"
 	"github.com/hujm2023/go-sms-protocol/cmpp/cmpp20"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 )
 
@@ -31,7 +30,7 @@ type receiptJob struct {
 // 这样即使客户端持续高速提交，也不会为每条短信创建 goroutine 或无限占用内存。
 type receiptDispatcher struct {
 	ctx          context.Context
-	logger       hlog.FullLogger
+	logger       smslog.FullLogger
 	minDelay     time.Duration
 	maxDelay     time.Duration
 	writeTimeout time.Duration
@@ -44,7 +43,7 @@ type receiptDispatcher struct {
 
 func newReceiptDispatcher(
 	ctx context.Context,
-	logger hlog.FullLogger,
+	logger smslog.FullLogger,
 	workerCount int,
 	queueSize int,
 	minDelay time.Duration,
@@ -210,7 +209,7 @@ func buildDeliveryReceipt(job receiptJob, doneAt time.Time, sequenceID uint32) (
 // 相比“每连接一个 ticker”，这种方式更容易统一停止，也能避免连接数增长时创建大量定时器。
 type heartbeatManager struct {
 	ctx          context.Context
-	logger       hlog.FullLogger
+	logger       smslog.FullLogger
 	interval     time.Duration
 	maxMissed    int
 	writeTimeout time.Duration
@@ -221,7 +220,7 @@ type heartbeatManager struct {
 
 func newHeartbeatManager(
 	ctx context.Context,
-	logger hlog.FullLogger,
+	logger smslog.FullLogger,
 	interval time.Duration,
 	maxMissed int,
 	writeTimeout time.Duration,

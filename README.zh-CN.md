@@ -137,6 +137,20 @@ SMPP_ENQUIRE_LINK sequence=42
 - 默认每条连接只允许一个 handler，以保持请求和响应顺序。提高该上限意味着显式接受并发处理和响应乱序的可能。
 - 需要获知写入错误时使用 `ISMSConn.Write` 或 `WriteAndClose`；`AsyncWrite` 已弃用。
 
+### v0.14.0 日志迁移
+
+`nioserver` 和所有示例统一使用 `github.com/hujm2023/go-sms-protocol/logger`，不再依赖外部的 `github.com/hujm2023/hlog`。
+
+这是一次 Breaking Change：`nioserver.WithLogger` 改为接收项目内的 `logger.FullLogger`。自定义日志实现需要将 `SetLevel(hlog.Level)` 改为 `SetLevel(logger.Level)`，其他日志方法保持不变。
+
+如果应用使用原来的默认日志实现，可以保留别名，仅替换导入路径：
+
+```go
+import hlog "github.com/hujm2023/go-sms-protocol/logger"
+```
+
+这样可以继续使用 `hlog.DefaultLogger()`、`hlog.SetLevel(hlog.LevelInfo)` 等调用。不传 `WithLogger` 或传入 `WithLogger[T](nil)` 时，新建服务使用项目内的默认 logger。请在创建服务和启动并发任务前调用 `logger.SetLogger`、`logger.SetLevel`、`logger.SetOutput` 完成配置。这些设置现在同时作用于协议辅助函数和使用该默认 logger 的服务，不会配置 netpoll 内部日志。
+
 ## 范围与限制
 
 - 本库不提供可直接用于生产的短信网关、SMPP/CMPP 客户端会话管理、持久化、路由策略或投递重试引擎。`nioserver/examples` 下的可运行服务仅用于集成示例。

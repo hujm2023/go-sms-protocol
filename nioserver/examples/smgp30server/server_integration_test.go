@@ -12,15 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hujm2023/hlog"
-
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/smgp"
 	"github.com/hujm2023/go-sms-protocol/smgp/smgp30"
 )
 
 type readyLogger struct {
-	hlog.FullLogger
+	smslog.FullLogger
 	ready chan string
 }
 
@@ -42,7 +41,7 @@ func startExampleServer(t *testing.T) string {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	result := make(chan error, 1)
-	logger := readyLogger{FullLogger: hlog.DefaultLogger(), ready: make(chan string, 1)}
+	logger := readyLogger{FullLogger: smslog.DefaultLogger(), ready: make(chan string, 1)}
 	go func() { result <- run(ctx, cfg, logger) }()
 	t.Cleanup(func() {
 		cancel()

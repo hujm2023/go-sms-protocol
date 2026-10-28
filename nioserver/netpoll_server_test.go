@@ -3,8 +3,10 @@ package nioserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -13,7 +15,50 @@ import (
 	"github.com/cloudwego/netpoll"
 
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 )
+
+type recordingServerLogger struct {
+	smslog.FullLogger
+	message string
+}
+
+func (l *recordingServerLogger) Errorf(format string, args ...interface{}) {
+	l.message = fmt.Sprintf(format, args...)
+}
+
+func TestBaseServerUsesProjectLogger(t *testing.T) {
+	previous := smslog.DefaultLogger()
+	t.Cleanup(func() { smslog.SetLogger(previous) })
+
+	for _, mode := range []string{"default", "nil", "custom"} {
+		t.Run(mode, func(t *testing.T) {
+			global := &recordingServerLogger{FullLogger: previous}
+			smslog.SetLogger(global)
+			want := global
+			var opts []ServerOption[any]
+			switch mode {
+			case "nil":
+				opts = append(opts, WithLogger[any](nil))
+			case "custom":
+				want = &recordingServerLogger{FullLogger: previous}
+				opts = append(opts, WithLogger[any](want))
+			}
+
+			server := newConnectionTestServer[any](t, opts...)
+			server.listenerFactory = func(string, string) (netpoll.Listener, error) {
+				return nil, errors.New("test bind failure")
+			}
+			server.Serve(time.Second)
+			if !strings.Contains(want.message, "test bind failure") {
+				t.Fatalf("server log = %q, want bind failure", want.message)
+			}
+			if mode == "custom" && global.message != "" {
+				t.Fatalf("custom server unexpectedly logged to global logger: %q", global.message)
+			}
+		})
+	}
+}
 
 func TestBaseServerRunBindsLazilyAndPropagatesEventLoopError(t *testing.T) {
 	wantErr := errors.New("serve failed")

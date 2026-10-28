@@ -9,9 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hujm2023/hlog"
-
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/nioserver/examples/internal/exampleutil"
 	"github.com/hujm2023/go-sms-protocol/smpp"
@@ -33,7 +32,7 @@ type receiptJob struct {
 
 type serverHandler struct {
 	cfg        config
-	logger     hlog.FullLogger
+	logger     smslog.FullLogger
 	heartbeats *heartbeatManager
 	receipts   *exampleutil.Queue[receiptJob]
 	messageIDs atomic.Uint64

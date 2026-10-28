@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/cloudwego/netpoll"
-	"github.com/hujm2023/hlog"
 
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/nioserver/examples/internal/exampleutil"
 	"github.com/hujm2023/go-sms-protocol/smpp"
@@ -41,7 +41,7 @@ func realMain(args []string, lookup func(string) (string, bool), output io.Write
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, cfg, hlog.DefaultLogger(), nil); err != nil {
+	if err := run(ctx, cfg, smslog.DefaultLogger(), nil); err != nil {
 		fmt.Fprintf(output, "smpp server: %v\n", err)
 		return 1
 	}
@@ -78,7 +78,7 @@ func parseConfig(args []string, lookup func(string) (string, bool), output io.Wr
 	return cfg, cfg.ServerConfig.Validate()
 }
 
-func run(ctx context.Context, cfg config, logger hlog.FullLogger, ready func(net.Addr)) error {
+func run(ctx context.Context, cfg config, logger smslog.FullLogger, ready func(net.Addr)) error {
 	serviceCtx, stop := context.WithCancel(context.Background())
 	defer stop()
 	heartbeats := newHeartbeatManager(serviceCtx, logger, cfg.heartbeatEvery, cfg.heartbeatMisses, cfg.WriteTimeout)

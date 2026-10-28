@@ -4,8 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/packet"
 	"github.com/hujm2023/go-sms-protocol/smgp"
@@ -110,8 +108,10 @@ func (s *Submit) IDecode(data []byte) error {
 
 	var parseErr error
 	s.Options, parseErr = smgp.ParseOptions(b.Bytes())
-	decodeErr := lo.Ternary(b.Error() != nil, b.Error(), parseErr)
-	return decodeErr
+	if err := b.Error(); err != nil {
+		return err
+	}
+	return parseErr
 }
 
 func (s *Submit) IEncode() ([]byte, error) {

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/cloudwego/netpoll"
-	"github.com/hujm2023/hlog"
 
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/smgp"
 	"github.com/hujm2023/go-sms-protocol/smgp/smgp30"
@@ -89,7 +89,7 @@ func TestSubmitValidationAndLoginMode(t *testing.T) {
 			conn := newFakeSMSConn()
 			conn.SetBizData(connectionSession{account: "900001", loginMode: tt.mode, isAuthenticated: true})
 			d := &receiptDispatcher{ctx: context.Background(), jobs: make(chan receiptJob, 100)}
-			h := &serverHandler{receipts: d, logger: hlog.DefaultLogger(), now: time.Now}
+			h := &serverHandler{receipts: d, logger: smslog.DefaultLogger(), now: time.Now}
 			request := validSubmit()
 			if tt.mutate != nil {
 				tt.mutate(request)
@@ -116,7 +116,7 @@ func TestSubmitBackpressureAndReportCorrelation(t *testing.T) {
 	conn := newFakeSMSConn()
 	conn.SetBizData(connectionSession{account: "900001", loginMode: smgp.TRANSMIT_MODE, isAuthenticated: true})
 	d := &receiptDispatcher{ctx: context.Background(), jobs: make(chan receiptJob, 1)}
-	h := &serverHandler{receipts: d, logger: hlog.DefaultLogger(), now: time.Now}
+	h := &serverHandler{receipts: d, logger: smslog.DefaultLogger(), now: time.Now}
 	data, err := h.handleSubmit(context.Background(), conn, validSubmit())
 	if err != nil {
 		t.Fatal(err)
@@ -149,7 +149,7 @@ func TestLoginDoesNotAuthenticateRejectedConnection(t *testing.T) {
 	}
 	h := &serverHandler{
 		account: "900001", password: "test-secret", authSkew: time.Minute,
-		heartbeats: manager, logger: hlog.DefaultLogger(), now: time.Now,
+		heartbeats: manager, logger: smslog.DefaultLogger(), now: time.Now,
 	}
 	login := smgp30.NewLogin(h.account, "wrong-password", 1)
 	data, err := h.handleLogin(context.Background(), conn, login)

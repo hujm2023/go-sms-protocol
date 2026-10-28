@@ -13,9 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hujm2023/hlog"
-
 	protocol "github.com/hujm2023/go-sms-protocol"
+	smslog "github.com/hujm2023/go-sms-protocol/logger"
 	"github.com/hujm2023/go-sms-protocol/nioserver"
 	"github.com/hujm2023/go-sms-protocol/nioserver/examples/internal/exampleutil"
 	"github.com/hujm2023/go-sms-protocol/sgip"
@@ -116,7 +115,7 @@ func runClient(ctx context.Context, cfg config, output io.Writer, ready func(net
 	result := make(chan error, 1)
 	bound := make(chan net.Addr, 1)
 	go func() {
-		result <- exampleutil.Run(callbackCtx, server, hlog.DefaultLogger(), exampleutil.Lifecycle{
+		result <- exampleutil.Run(callbackCtx, server, smslog.DefaultLogger(), exampleutil.Lifecycle{
 			Name: "sgip SP callback listener", ShutdownTimeout: 5 * time.Second,
 			Ready: func(address net.Addr) { bound <- address },
 		})
