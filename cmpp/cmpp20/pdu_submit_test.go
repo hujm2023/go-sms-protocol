@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hujm2023/go-sms-protocol/cmpp"
@@ -84,6 +83,8 @@ func TestHeaderString(t *testing.T) {
 
 	ss, _ := json.Marshal(submit)
 	var sss PduSubmit
-	lo.Must0(json.Unmarshal(ss, &sss))
+	if err := json.Unmarshal(ss, &sss); err != nil {
+		t.Fatal(err)
+	}
 	t.Log(sss)
 }

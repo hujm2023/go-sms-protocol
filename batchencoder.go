@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-
-	"github.com/samber/lo"
-	"golang.org/x/sync/errgroup"
+	"sync"
 
 	"github.com/hujm2023/go-sms-protocol/datacoding"
 	gsm7 "github.com/hujm2023/go-sms-protocol/datacoding/gsm7encoding"
@@ -97,24 +95,29 @@ func (b *BatchDataCodingEncoder) Build(ctx context.Context) (contents [][]byte, 
 
 	var hasUcs2 bool
 	encoders := make([]*encoder, 0, len(b.dataCodings)+1)
-	eg := new(errgroup.Group)
+	var wg sync.WaitGroup
 	for msgFmt := range b.allDataCodings() {
 		if msgFmt == datacoding.SMPP_CODING_UCS2 {
 			hasUcs2 = true
 		}
 		encoder := newBatchEncoder(b.protocol, msgFmt, b.content, b.frameKey, datacoding.IsValidProtoDataCoding(b.originDataCoding) && msgFmt == b.originDataCoding)
 		encoders = append(encoders, encoder)
-		eg.Go(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			encoder.Run(ctx)
-			return nil
-		})
+		}()
 	}
-	_ = eg.Wait()
+	wg.Wait()
 
 	// Filter out those that cannot be encoded.
-	encoders = lo.Filter(encoders, func(encoder *encoder, _ int) bool {
-		return encoder.canEncode
-	})
+	validEncoders := make([]*encoder, 0, len(encoders))
+	for _, encoder := range encoders {
+		if encoder.canEncode {
+			validEncoders = append(validEncoders, encoder)
+		}
+	}
+	encoders = validEncoders
 
 	// If none can be encoded and UCS2 is not included in the provided encodings,
 	// attempt to use UCS2 as a fallback.
@@ -275,7 +278,11 @@ func (s *encoder) Result() (contents [][]byte, actualMsgFmt datacoding.ProtocolD
 	}
 
 	if !s.canEncode {
-		return nil, datacoding.UnknownProtocolDataCoding, errors.New(lo.Ternary(len(s.reason) > 0, s.reason, "encode failed"))
+		reason := s.reason
+		if reason == "" {
+			reason = "encode failed"
+		}
+		return nil, datacoding.UnknownProtocolDataCoding, errors.New(reason)
 	}
 	return s.data, s.msgFmt, nil
 }
