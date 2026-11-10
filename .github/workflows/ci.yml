@@ -96,6 +96,6 @@ jobs:
       - name: Generate coverage
         run: go test -count=1 -tags=integration -coverprofile=./cover.out -covermode=atomic -coverpkg=./... ./...
       - name: Check coverage
-        uses: vladopajic/go-test-coverage@239670d50ed072bfce8b9ab1765227a53429d664 # v2.20.1
+        uses: vladopajic/go-test-coverage@6890500b00a7e5862e54662c04ea9fa7c799ce1e # v2.23.0
         with:
           config: ./.testcoverage.yml
