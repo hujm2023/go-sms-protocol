@@ -3,8 +3,11 @@ package smpp34
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	sms "github.com/hujm2023/go-sms-protocol"
 	"github.com/hujm2023/go-sms-protocol/smpp"
@@ -50,6 +53,148 @@ func validBind() Bind {
 		InterfaceVersion: 0x34,
 		AddrTon:          smpp.TON_Unknown,
 		AddrNpi:          smpp.NPI_Unknown,
+	}
+}
+
+func assertGatewayRoundTrip(test *testing.T, original sms.PDU) []byte {
+	test.Helper()
+	wire, err := original.IEncode()
+	require.NoError(test, err)
+	require.NoError(test, original.IDecode(wire))
+	directWire, err := original.IEncode()
+	require.NoError(test, err)
+	require.Equal(test, wire, directWire)
+	decoded, err := DecodeSMPP34(wire)
+	require.NoError(test, err)
+	encoded, err := decoded.IEncode()
+	require.NoError(test, err)
+	require.Equal(test, wire, encoded)
+	return wire
+}
+
+func TestGatewayCommandStatusCompatibility(test *testing.T) {
+	for _, command := range []smpp.CMDId{
+		smpp.BIND_RECEIVER, smpp.BIND_TRANSMITTER, smpp.BIND_TRANSCEIVER,
+		smpp.SUBMIT_SM, smpp.DELIVER_SM, smpp.ENQUIRE_LINK, smpp.UNBIND, smpp.GENERIC_NACK,
+	} {
+		for _, status := range []uint32{0, uint32(smpp.ESME_RSYSERR), 0xffffffff} {
+			test.Run(fmt.Sprintf("%s/status_%08x", command, status), func(subtest *testing.T) {
+				var original sms.PDU
+				switch command {
+				case smpp.BIND_RECEIVER, smpp.BIND_TRANSMITTER, smpp.BIND_TRANSCEIVER:
+					bind := validBind()
+					bind.ID = command
+					original = &bind
+				case smpp.SUBMIT_SM:
+					submit := validSubmitSm()
+					original = &submit
+				case smpp.DELIVER_SM:
+					deliver := validDeliverSm()
+					original = &deliver
+				case smpp.ENQUIRE_LINK:
+					original = &EnquireLink{Header: smpp.Header{ID: command, Sequence: 1}}
+				case smpp.UNBIND:
+					original = &Unbind{Header: smpp.Header{ID: command, Sequence: 1}}
+				case smpp.GENERIC_NACK:
+					original = &GenericNack{Header: smpp.Header{ID: command, Status: smpp.ESME_RSYSERR}}
+				}
+				wire, err := original.IEncode()
+				require.NoError(subtest, err)
+				binary.BigEndian.PutUint32(wire[8:12], status)
+				require.NoError(subtest, original.IDecode(wire))
+				require.Equal(subtest, wire, assertGatewayRoundTrip(subtest, original))
+			})
+		}
+	}
+}
+
+func TestGatewayMessagePayloadCoexistence(test *testing.T) {
+	for _, representation := range []string{"ordered list", "legacy map"} {
+		test.Run(representation, func(subtest *testing.T) {
+			submit := validSubmitSm()
+			deliver := validDeliverSm()
+			payload := []byte{0, 0xff, 'p'}
+			tlvs := smpp.TLVList{smpp.NewTLV(smpp.MESSAGE_PAYLOAD, payload)}
+			if representation == "ordered list" {
+				submit.OptionalTLVs, deliver.OptionalTLVs = tlvs, tlvs
+			} else {
+				submit.TLVs, deliver.TLVs = tlvs.ToMap(), tlvs.ToMap()
+			}
+			assertGatewayRoundTrip(subtest, &submit)
+			assertGatewayRoundTrip(subtest, &deliver)
+			require.Equal(subtest, []byte("hello"), submit.ShortMessage)
+			require.Equal(subtest, []byte("hello"), deliver.ShortMessage)
+			require.Equal(subtest, uint8(5), submit.SmLength)
+			require.Equal(subtest, uint8(5), deliver.SmLength)
+			require.Equal(subtest, payload, submit.TLVs[smpp.MESSAGE_PAYLOAD].Value())
+			require.Equal(subtest, payload, deliver.TLVs[smpp.MESSAGE_PAYLOAD].Value())
+		})
+	}
+}
+
+func TestGatewayResponseBodyCompatibility(test *testing.T) {
+	for _, command := range []smpp.CMDId{
+		smpp.BIND_RECEIVER_RESP, smpp.BIND_TRANSMITTER_RESP, smpp.BIND_TRANSCEIVER_RESP,
+		smpp.SUBMIT_SM_RESP, smpp.DELIVER_SM_RESP,
+	} {
+		for _, status := range []uint32{0, uint32(smpp.ESME_RSYSERR)} {
+			for _, body := range []struct {
+				name string
+				data []byte
+			}{
+				{name: "header only"},
+				{name: "empty ID", data: []byte{0}},
+				{name: "nonempty ID", data: []byte("gateway-id\x00")},
+				{name: "unterminated ID", data: []byte("gateway-id")},
+				{name: "trailing octet", data: []byte{0, 1}},
+			} {
+				test.Run(fmt.Sprintf("%s/status_%d/%s", command, status, body.name), func(subtest *testing.T) {
+					var direct sms.PDU
+					switch command {
+					case smpp.SUBMIT_SM_RESP:
+						direct = &SubmitSmResp{MessageID: "stale"}
+					case smpp.DELIVER_SM_RESP:
+						direct = &DeliverSmResp{MessageID: "stale"}
+					default:
+						direct = &BindResp{
+							SystemID: "stale",
+							TLVs:     smpp.TLVList{smpp.NewTLV(smpp.SC_INTERFACE_VERSION, []byte{0x34})}.ToMap(),
+						}
+					}
+					wire := make([]byte, smpp.MinSMPPPacketLen)
+					wire = append(wire, body.data...)
+					binary.BigEndian.PutUint32(wire[:4], uint32(len(wire)))
+					binary.BigEndian.PutUint32(wire[4:8], uint32(command))
+					binary.BigEndian.PutUint32(wire[8:12], status)
+					binary.BigEndian.PutUint32(wire[12:16], 1)
+					decoded, err := DecodeSMPP34(wire)
+					missingDeliverBody := command == smpp.DELIVER_SM_RESP && len(body.data) == 0
+					malformedBody := body.name == "unterminated ID" || body.name == "trailing octet"
+					if missingDeliverBody || malformedBody {
+						require.Error(subtest, err)
+						require.Error(subtest, direct.IDecode(wire))
+						return
+					}
+					require.NoError(subtest, err)
+					require.NoError(subtest, direct.IDecode(wire))
+					for _, response := range []sms.PDU{decoded, direct} {
+						encoded, err := response.IEncode()
+						require.NoError(subtest, err)
+						require.Equal(subtest, wire[4:16], encoded[4:16])
+						expectedBody := body.data
+						if len(body.data) <= 1 {
+							expectedBody = []byte{0}
+							if status != 0 && command != smpp.DELIVER_SM_RESP {
+								expectedBody = []byte{}
+							}
+						}
+						require.Equal(subtest, expectedBody, encoded[16:])
+						_, err = DecodeSMPP34(encoded)
+						require.NoError(subtest, err)
+					}
+				})
+			}
+		}
 	}
 }
 
@@ -156,7 +301,6 @@ func TestSubmitSmProtocolFieldValidation(t *testing.T) {
 		mutate func(*SubmitSm)
 	}{
 		{name: "wrong command id", mutate: func(p *SubmitSm) { p.ID = smpp.DELIVER_SM }},
-		{name: "nonzero request status", mutate: func(p *SubmitSm) { p.Status = smpp.ESME_RSYSERR }},
 		{name: "service type contains NULL", mutate: func(p *SubmitSm) { p.ServiceType = "a\x00b" }},
 		{name: "source address contains NULL", mutate: func(p *SubmitSm) { p.SourceAddr = "1\x002" }},
 		{name: "NULL destination address", mutate: func(p *SubmitSm) { p.DestinationAddr = "1\x002" }},
@@ -165,12 +309,9 @@ func TestSubmitSmProtocolFieldValidation(t *testing.T) {
 		{name: "reserved esm class type", mutate: func(p *SubmitSm) { p.ESMClass = 0x04 }},
 		{name: "invalid priority", mutate: func(p *SubmitSm) { p.PriorityFlag = 4 }},
 		{name: "invalid schedule", mutate: func(p *SubmitSm) { p.ScheduleDeliveryTime = "000031000000000R" }},
-		{name: "reserved registered delivery", mutate: func(p *SubmitSm) { p.RegisteredDelivery = 3 }},
 		{name: "invalid replace flag", mutate: func(p *SubmitSm) { p.ReplaceIfPresentFlag = 2 }},
-		{name: "reserved data coding", mutate: func(p *SubmitSm) { p.DataCoding = 0x0b }},
 		{name: "reserved default message", mutate: func(p *SubmitSm) { p.SmDefaultMsgID = 0xff }},
 		{name: "short message length mismatch", mutate: func(p *SubmitSm) { p.SmLength++ }},
-		{name: "payload conflicts with short message", mutate: func(p *SubmitSm) { p.OptionalTLVs = smpp.TLVList{smpp.NewTLV(smpp.MESSAGE_PAYLOAD, []byte("payload"))} }},
 	}
 
 	for _, tt := range tests {
@@ -198,13 +339,11 @@ func TestDeliverSmProtocolFieldValidation(t *testing.T) {
 		mutate func(*DeliverSm)
 	}{
 		{name: "reserved esm class type", mutate: func(p *DeliverSm) { p.ESMClass = 0x0c }},
-		{name: "schedule must be null", mutate: func(p *DeliverSm) { p.ScheduleDeliveryTime = "000000000001000R" }},
-		{name: "validity must be null", mutate: func(p *DeliverSm) { p.ValidityPeriod = "000000000001000R" }},
+		{name: "schedule contains NULL", mutate: func(p *DeliverSm) { p.ScheduleDeliveryTime = "a\x00b" }},
+		{name: "validity contains NULL", mutate: func(p *DeliverSm) { p.ValidityPeriod = "a\x00b" }},
 		{name: "replace flag must be zero", mutate: func(p *DeliverSm) { p.ReplaceIfPresentFlag = 1 }},
 		{name: "default message must be zero", mutate: func(p *DeliverSm) { p.SmDefaultMsgId = 1 }},
-		{name: "payload conflicts with short message", mutate: func(p *DeliverSm) {
-			p.OptionalTLVs = smpp.TLVList{smpp.NewTLV(smpp.MESSAGE_PAYLOAD, []byte("payload"))}
-		}},
+		{name: "short message length mismatch", mutate: func(p *DeliverSm) { p.SmLength++ }},
 	}
 
 	for _, tt := range tests {
@@ -275,8 +414,7 @@ func TestMessagePayloadWithoutShortMessage(t *testing.T) {
 
 func TestResponseBodyRules(t *testing.T) {
 	errorResponse := SubmitSmResp{
-		Header:    smpp.Header{ID: smpp.SUBMIT_SM_RESP, Status: smpp.ESME_RSYSERR, Sequence: 1},
-		MessageID: "ignored-on-error",
+		Header: smpp.Header{ID: smpp.SUBMIT_SM_RESP, Status: smpp.ESME_RSYSERR, Sequence: 1},
 	}
 	data, err := errorResponse.IEncode()
 	if err != nil {
@@ -291,8 +429,8 @@ func TestResponseBodyRules(t *testing.T) {
 
 	withBody := append(append([]byte(nil), data...), 0)
 	binary.BigEndian.PutUint32(withBody[:4], uint32(len(withBody)))
-	if err := new(SubmitSmResp).IDecode(withBody); err == nil {
-		t.Fatal("error submit_sm_resp with body accepted")
+	if err := new(SubmitSmResp).IDecode(withBody); err != nil {
+		t.Fatalf("error submit_sm_resp with NULL body rejected: %v", err)
 	}
 
 	deliverResponse := DeliverSmResp{Header: smpp.Header{ID: smpp.DELIVER_SM_RESP, Status: smpp.ESME_RSYSERR, Sequence: 1}}

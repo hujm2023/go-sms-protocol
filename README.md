@@ -88,9 +88,17 @@ Coverage in this table means that the package contains concrete PDU types and th
 
 SMPP 5.0 is not implemented. A protocol PDF or version constant in the repository does not imply decoder or PDU support.
 
-For gateway compatibility, SMPP codecs do not enforce the specification's per-field maximum lengths for variable-length strings (credentials, system/service types, addresses, and message IDs, including TLVs). Source and destination addresses preserve non-NULL bytes verbatim, including non-ASCII and non-UTF-8 encodings; callers choose the address encoding. Other strings still require ASCII without embedded NULL bytes. `short_message` accepts up to 255 bytes, as represented by its one-byte length field. Length consistency, NULL termination, fixed-width fields, time formats, and the complete PDU limit of `smpp.MAX_PDU_SIZE` (4KB) remain enforced. The explicit `smpp.ValidateCString` helper still checks the maximum supplied by its caller.
+For gateway compatibility, SMPP codecs do not enforce the specification's per-field maximum lengths for variable-length strings (credentials, system/service types, addresses, and message IDs, including TLVs). Source and destination addresses preserve non-NULL bytes verbatim, including non-ASCII and non-UTF-8 encodings; callers choose the address encoding. Other strings still require ASCII without embedded NULL bytes. `short_message` accepts up to 255 bytes, as represented by its one-byte length field. Length consistency, NULL termination for present strings, fixed-width fields, Submit time formats, and the complete PDU limit of `smpp.MAX_PDU_SIZE` (4KB) remain enforced. The explicit `smpp.ValidateCString` helper still checks the maximum supplied by its caller.
 
-For compatibility with the legacy gateway parser, `deliver_sm` preserves the raw `registered_delivery` byte and the complete uint32 `sequence_number` domain, including zero. `deliver_sm_resp` echoes the original sequence so the receipt can be acknowledged. Other command sequence rules and other field validation remain enforced.
+For compatibility with the legacy gateway parser:
+
+- Requests preserve any `command_status`, and `generic_nack` accepts status zero without treating it as an error response requirement.
+- `submit_sm` and `deliver_sm` preserve all byte values of `registered_delivery` and `data_coding`. They allow `short_message` and `message_payload` to coexist without selecting or discarding either. The explicit `smpp.ValidateDataCoding` helper remains available for callers that want specification validation; accepting a PDU does not imply support for decoding every payload character encoding.
+- `deliver_sm` accepts nonempty time fields as ordinary C-Octet Strings, without validating SMPP time syntax. It also preserves the complete uint32 `sequence_number` domain, including zero. `deliver_sm_resp` echoes the original sequence so the receipt can be acknowledged.
+- Bind and Submit responses accept header-only packets regardless of status, and error responses may include their normal body (`system_id` and TLVs for Bind, `message_id` for Submit). Encoding retains supplied nonempty fields; empty error responses remain header-only, while empty successful responses encode a NULL-terminated empty ID.
+- `deliver_sm_resp` accepts a nonempty `message_id`, but still requires a NULL-terminated body rather than a header-only packet.
+
+Other command sequence rules, field validation, TLV structure and semantic checks remain enforced. Truncated strings, short-message data, and TLVs are rejected rather than silently truncated or zero-filled.
 
 ## Packages
 

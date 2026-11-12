@@ -3,13 +3,48 @@ package smpp34
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
+
+func TestDeliverSmGatewayDataCoding(test *testing.T) {
+	for value := 0; value <= 255; value++ {
+		test.Run(fmt.Sprintf("byte_%02x", value), func(subtest *testing.T) {
+			deliver := validDeliverSm()
+			deliver.DataCoding = uint8(value)
+			assertGatewayRoundTrip(subtest, &deliver)
+			require.Equal(subtest, uint8(value), deliver.DataCoding)
+		})
+	}
+}
+
+func TestDeliverSmGatewayTimeFields(test *testing.T) {
+	for _, timeField := range []struct {
+		name  string
+		value string
+	}{
+		{name: "empty"},
+		{name: "standard time", value: "000000000001000R"},
+		{name: "opaque time", value: "gateway-time"},
+		{name: "extended time", value: strings.Repeat("1", 128)},
+	} {
+		test.Run(timeField.name, func(subtest *testing.T) {
+			deliver := validDeliverSm()
+			deliver.ScheduleDeliveryTime = timeField.value
+			deliver.ValidityPeriod = timeField.value
+			assertGatewayRoundTrip(subtest, &deliver)
+			require.Equal(subtest, timeField.value, deliver.ScheduleDeliveryTime)
+			require.Equal(subtest, timeField.value, deliver.ValidityPeriod)
+		})
+	}
+}
 
 func TestGatewayReceiptDecodeAndAcknowledgement(t *testing.T) {
 	for _, test := range []struct {

@@ -2,13 +2,28 @@ package smpp34
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
+
+func TestSubmitSmGatewayByteFields(test *testing.T) {
+	for value := 0; value <= 255; value++ {
+		test.Run(fmt.Sprintf("byte_%02x", value), func(subtest *testing.T) {
+			submit := validSubmitSm()
+			submit.RegisteredDelivery = uint8(value)
+			submit.DataCoding = uint8(value)
+			assertGatewayRoundTrip(subtest, &submit)
+			require.Equal(subtest, uint8(value), submit.RegisteredDelivery)
+			require.Equal(subtest, uint8(value), submit.DataCoding)
+		})
+	}
+}
 
 type SubmitSmTestSuite struct {
 	suite.Suite

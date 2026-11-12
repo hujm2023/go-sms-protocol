@@ -7,10 +7,36 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
+
+func TestBindRespErrorWithBody(test *testing.T) {
+	for _, command := range []smpp.CMDId{
+		smpp.BIND_RECEIVER_RESP, smpp.BIND_TRANSMITTER_RESP, smpp.BIND_TRANSCEIVER_RESP,
+	} {
+		for _, systemID := range []string{"", "gateway-id"} {
+			test.Run(command.String()+"/"+systemID, func(subtest *testing.T) {
+				response := &BindResp{
+					Header:   smpp.Header{ID: command, Status: smpp.ESME_RBINDFAIL, Sequence: 1},
+					SystemID: systemID,
+					TLVs:     smpp.TLVList{smpp.NewTLV(smpp.SC_INTERFACE_VERSION, []byte{0x34})}.ToMap(),
+				}
+				wire := assertGatewayRoundTrip(subtest, response)
+				require.Equal(subtest, systemID, response.SystemID)
+				require.Equal(subtest, []byte{0x34}, response.TLVs[smpp.SC_INTERFACE_VERSION].Value())
+				require.Equal(subtest, smpp.MinSMPPPacketLen+len(systemID)+1+5, len(wire))
+				truncated := append([]byte(nil), wire[:len(wire)-1]...)
+				binary.BigEndian.PutUint32(truncated[:4], uint32(len(truncated)))
+				require.Error(subtest, new(BindResp).IDecode(truncated))
+				_, err := DecodeSMPP34(truncated)
+				require.Error(subtest, err)
+			})
+		}
+	}
+}
 
 func TestBindExtendedCredentials(t *testing.T) {
 	for _, command := range []smpp.CMDId{smpp.BIND_RECEIVER, smpp.BIND_TRANSMITTER, smpp.BIND_TRANSCEIVER} {
@@ -321,9 +347,7 @@ func TestBindRespErrorHeaderOnly(t *testing.T) {
 			Status:   smpp.ESME_RINVPASWD,
 			Sequence: 9,
 		},
-		SystemID: "must not be encoded",
 	}
-	bindResp.TLVs.SetTLV(smpp.NewTLV(smpp.SC_INTERFACE_VERSION, []byte{52}))
 
 	data, err := bindResp.IEncode()
 	assert.NoError(t, err)
@@ -343,7 +367,7 @@ func TestBindRespErrorHeaderOnly(t *testing.T) {
 	assert.Empty(t, decoded.TLVs)
 }
 
-func TestBindRespErrorRejectsTrailingBody(t *testing.T) {
+func TestBindRespErrorRejectsLengthMismatch(t *testing.T) {
 	bindResp := BindResp{Header: smpp.Header{
 		ID:       smpp.BIND_TRANSCEIVER_RESP,
 		Status:   smpp.ESME_RBINDFAIL,

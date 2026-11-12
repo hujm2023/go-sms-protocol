@@ -28,10 +28,10 @@ type DeliverSm struct {
 	ProtocolID   uint8
 	PriorityFlag uint8
 
-	// CString, max 17
+	// CString; length is bounded by the total PDU size.
 	ScheduleDeliveryTime string
 
-	// CString, max 17
+	// CString; length is bounded by the total PDU size.
 	ValidityPeriod string
 
 	RegisteredDelivery   uint8
@@ -156,14 +156,14 @@ func (d *DeliverSm) validate() error {
 	if err := smpp.ValidatePriorityFlag(d.PriorityFlag); err != nil {
 		return err
 	}
-	if d.ScheduleDeliveryTime != "" || d.ValidityPeriod != "" {
-		return fmt.Errorf("deliver_sm schedule_delivery_time and validity_period must be NULL")
+	if err := smpp.ValidateCString(smpp.SCHEDULE_DELIVERY_TIME, d.ScheduleDeliveryTime, smpp.MAX_PDU_SIZE); err != nil {
+		return err
+	}
+	if err := smpp.ValidateCString(smpp.VALIDITY_PERIOD, d.ValidityPeriod, smpp.MAX_PDU_SIZE); err != nil {
+		return err
 	}
 	if d.ReplaceIfPresentFlag != 0 {
 		return fmt.Errorf("deliver_sm replace_if_present_flag must be zero")
-	}
-	if err := smpp.ValidateDataCoding(d.DataCoding); err != nil {
-		return err
 	}
 	if d.SmDefaultMsgId != 0 {
 		return fmt.Errorf("deliver_sm sm_default_msg_id must be zero")
@@ -172,14 +172,7 @@ func (d *DeliverSm) validate() error {
 		return fmt.Errorf("sm_length=%d does not match short_message length=%d", d.SmLength, len(d.ShortMessage))
 	}
 
-	tlvs := d.optionalTLVs()
-	if err := smpp.ValidateTLVList(tlvs); err != nil {
-		return err
-	}
-	if len(tlvs.All(smpp.MESSAGE_PAYLOAD)) > 0 && (d.SmLength != 0 || len(d.ShortMessage) != 0) {
-		return fmt.Errorf("message_payload and short_message are mutually exclusive")
-	}
-	return nil
+	return smpp.ValidateTLVList(d.optionalTLVs())
 }
 
 func (d *DeliverSm) SetSequenceID(id uint32) {
@@ -238,7 +231,7 @@ func (d *DeliverSm) String() string {
 type DeliverSmResp struct {
 	smpp.Header
 
-	// CString, size 1, unused, set to null
+	// CString; length is bounded by the total PDU size.
 	MessageID string
 }
 
@@ -258,18 +251,18 @@ func (d *DeliverSmResp) IDecode(data []byte) error {
 	if err := buf.Error(); err != nil {
 		return err
 	}
-	if d.MessageID != "" || buf.Remaining() != 0 {
-		return fmt.Errorf("deliver_sm_resp message_id must be one NULL octet")
+	if buf.Remaining() != 0 {
+		return fmt.Errorf("deliver_sm_resp contains %d trailing octets", buf.Remaining())
 	}
-	return nil
+	return smpp.ValidateCString(smpp.MESSAGE_ID, d.MessageID, smpp.MAX_PDU_SIZE)
 }
 
 func (d *DeliverSmResp) IEncode() ([]byte, error) {
 	if err := smpp.ValidateResponseHeader(d.Header, smpp.DELIVER_SM_RESP); err != nil {
 		return nil, err
 	}
-	if d.MessageID != "" {
-		return nil, fmt.Errorf("deliver_sm_resp message_id must be empty")
+	if err := smpp.ValidateCString(smpp.MESSAGE_ID, d.MessageID, smpp.MAX_PDU_SIZE); err != nil {
+		return nil, err
 	}
 
 	buf := packet.NewPacketWriter(0)

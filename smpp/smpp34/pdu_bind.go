@@ -215,20 +215,16 @@ func (b *BindResp) IEncode() ([]byte, error) {
 	if err := smpp.ValidateResponseHeader(b.Header, b.Header.ID); err != nil {
 		return nil, err
 	}
-	var tlvBytes []byte
-	if b.Header.Status == smpp.ESME_ROK {
-		if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, smpp.MAX_PDU_SIZE); err != nil {
-			return nil, err
-		}
-		tlvList := b.TLVs.ToList()
-		if err := smpp.ValidateTLVList(tlvList); err != nil {
-			return nil, err
-		}
-		var err error
-		tlvBytes, err = tlvList.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
+	if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, smpp.MAX_PDU_SIZE); err != nil {
+		return nil, err
+	}
+	tlvList := b.TLVs.ToList()
+	if err := smpp.ValidateTLVList(tlvList); err != nil {
+		return nil, err
+	}
+	tlvBytes, err := tlvList.MarshalBinary()
+	if err != nil {
+		return nil, err
 	}
 
 	buf := packet.NewPacketWriter(0)
@@ -236,17 +232,11 @@ func (b *BindResp) IEncode() ([]byte, error) {
 
 	smpp.WriteHeaderNoLength(b.Header, buf)
 
-	if b.Header.Status != smpp.ESME_ROK {
-		data, err := buf.BytesWithLength()
-		if err != nil {
-			return nil, err
-		}
-		return data, smpp.ValidateEncodedPDU(data)
+	hasBody := b.Header.Status == smpp.ESME_ROK || b.SystemID != "" || len(tlvBytes) > 0
+	if hasBody {
+		buf.WriteCString(b.SystemID)
+		buf.WriteBytes(tlvBytes)
 	}
-
-	buf.WriteCString(b.SystemID)
-
-	buf.WriteBytes(tlvBytes)
 
 	data, err := buf.BytesWithLength()
 	if err != nil {
@@ -276,12 +266,9 @@ func (b *BindResp) IDecode(data []byte) error {
 
 	b.Header = smpp.ReadHeader(buf)
 
-	if b.Header.Status != smpp.ESME_ROK {
+	if buf.Remaining() == 0 {
 		b.SystemID = ""
 		b.TLVs = nil
-		if len(data) != smpp.MinSMPPPacketLen {
-			return fmt.Errorf("bind_resp with error status must not contain a body")
-		}
 		return nil
 	}
 
