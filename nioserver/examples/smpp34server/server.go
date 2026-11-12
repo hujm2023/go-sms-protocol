@@ -129,6 +129,15 @@ func (h *serverHandler) submit(ctx context.Context, conn nioserver.ISMSConn[conn
 			sourceTON: p.SourceAddrTon, sourceNPI: p.SourceAddrNpi,
 			destinationTON: p.DestAddrTon, destinationNPI: p.DestAddrNpi, submitted: time.Now(),
 		}
+		receipt, err := buildReceipt(job, job.submitted, 1)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := receipt.IEncode(); err != nil {
+			response.Status = smpp.ESME_RINVMSGLEN
+			response.MessageID = ""
+			return response.IEncode()
+		}
 		if !h.receipts.TryEnqueue(job) {
 			response.Status = smpp.ESME_RTHROTTLED
 			response.MessageID = ""

@@ -11,8 +11,8 @@ var ErrInvalidSequenceNumber = errors.New("invalid SMPP sequence_number")
 // ValidateDecodedPDU validates the common SMPP header against the bytes that
 // contain the complete PDU. sequence_number is encoded as an unsigned
 // 4-octet Integer, but SMPP 3.4 limits its value to 1..0x7fffffff. A zero
-// value is only permitted for a generic_nack when the peer could not recover
-// the original sequence_number.
+// value is permitted when allowZeroSequence is set. Gateway deliver_sm
+// packets and their responses preserve the complete uint32 sequence domain.
 func ValidateDecodedPDU(data []byte, expectedID CMDId, allowZeroSequence bool) (Header, error) {
 	if len(data) < MinSMPPPacketLen || len(data) > MAX_PDU_SIZE {
 		return Header{}, fmt.Errorf("%w: got %d bytes", ErrInvalidPudLength, len(data))
@@ -28,7 +28,7 @@ func ValidateDecodedPDU(data []byte, expectedID CMDId, allowZeroSequence bool) (
 	if header.ID != expectedID {
 		return Header{}, fmt.Errorf("unexpected command_id: got %s, want %s", header.ID, expectedID)
 	}
-	if err := ValidateSequenceNumber(header.Sequence, allowZeroSequence); err != nil {
+	if err := validateCommandSequence(header.ID, header.Sequence, allowZeroSequence); err != nil {
 		return Header{}, err
 	}
 
@@ -39,13 +39,7 @@ func ValidateDecodedPDU(data []byte, expectedID CMDId, allowZeroSequence bool) (
 // Header.Length is intentionally ignored because encoders calculate it from
 // the serialized PDU.
 func ValidateRequestHeader(header Header, expectedID CMDId) error {
-	if err := validateHeaderIdentity(header, expectedID, false); err != nil {
-		return err
-	}
-	if header.Status != ESME_ROK {
-		return fmt.Errorf("request command_status must be ESME_ROK, got %s", header.Status)
-	}
-	return nil
+	return validateHeaderIdentity(header, expectedID, false)
 }
 
 // ValidateResponseHeader validates fields common to response PDUs before
@@ -55,22 +49,25 @@ func ValidateResponseHeader(header Header, expectedID CMDId) error {
 }
 
 // ValidateGenericNackHeader validates the generic_nack exception: the
-// sequence_number may be zero and command_status must describe an error.
+// sequence_number may be zero. The peer's command_status is preserved.
 func ValidateGenericNackHeader(header Header) error {
-	if err := validateHeaderIdentity(header, GENERIC_NACK, true); err != nil {
-		return err
-	}
-	if header.Status == ESME_ROK {
-		return errors.New("generic_nack command_status must not be ESME_ROK")
-	}
-	return nil
+	return validateHeaderIdentity(header, GENERIC_NACK, true)
 }
 
 func validateHeaderIdentity(header Header, expectedID CMDId, allowZeroSequence bool) error {
 	if header.ID != expectedID {
 		return fmt.Errorf("unexpected command_id: got %s, want %s", header.ID, expectedID)
 	}
-	return ValidateSequenceNumber(header.Sequence, allowZeroSequence)
+	return validateCommandSequence(header.ID, header.Sequence, allowZeroSequence)
+}
+
+func validateCommandSequence(command CMDId, sequence uint32, allowZero bool) error {
+	switch command {
+	case DELIVER_SM, DELIVER_SM_RESP:
+		return nil
+	default:
+		return ValidateSequenceNumber(sequence, allowZero)
+	}
 }
 
 func ValidateSequenceNumber(sequence uint32, allowZero bool) error {

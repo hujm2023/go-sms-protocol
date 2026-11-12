@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -133,6 +134,90 @@ func TestSubmitHonorsBindModeAndReceiptFlags(t *testing.T) {
 				case <-time.After(time.Second):
 					t.Fatal("no receipt queued")
 				}
+			}
+		})
+	}
+}
+
+func TestSubmitChecksReceiptSizeBeforeAccepting(t *testing.T) {
+	template, err := buildReceipt(receiptJob{messageID: "1", destination: "13800138000"}, time.Now(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := template.IEncode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	maxSource := smpp.MAX_PDU_SIZE - len(wire)
+	for _, test := range []struct {
+		name         string
+		sourceLength int
+		want         smpp.CMDStatus
+	}{
+		{name: "receipt fits exactly", sourceLength: maxSource},
+		{name: "receipt one byte too large", sourceLength: maxSource + 1, want: smpp.ESME_RINVMSGLEN},
+		{name: "4000-byte source", sourceLength: 4000, want: smpp.ESME_RINVMSGLEN},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			jobs := make(chan receiptJob, 1)
+			handler := newHandler()
+			handler.receipts = exampleutil.NewQueue(ctx, 1, 1, func(_ context.Context, job receiptJob) { jobs <- job })
+			defer func() {
+				cancel()
+				if err := handler.receipts.Wait(context.Background()); err != nil {
+					t.Error(err)
+				}
+			}()
+			conn := &fakeConn{session: connectionSession{bound: true, mode: smpp.BIND_TRANSCEIVER}}
+			request := &smpp34.SubmitSm{
+				Header:          smpp.Header{ID: smpp.SUBMIT_SM, Sequence: 7},
+				SourceAddr:      strings.Repeat("1", test.sourceLength),
+				DestinationAddr: "13800138000", RegisteredDelivery: 1,
+			}
+			if _, err := request.IEncode(); err != nil {
+				t.Fatalf("submit must fit: %v", err)
+			}
+			wire, err := handler.submit(ctx, conn, request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var response smpp34.SubmitSmResp
+			if err := response.IDecode(wire); err != nil {
+				t.Fatal(err)
+			}
+			if response.Status != test.want {
+				t.Fatalf("status=%d, want %d", response.Status, test.want)
+			}
+			if test.want != smpp.ESME_ROK {
+				if response.MessageID != "" {
+					t.Fatal("rejected submit has a message ID")
+				}
+				cancel()
+				if err := handler.receipts.Wait(context.Background()); err != nil {
+					t.Fatal(err)
+				}
+				if len(jobs) != 0 {
+					t.Fatal("oversized receipt was queued")
+				}
+				return
+			}
+			select {
+			case job := <-jobs:
+				receipt, err := buildReceipt(job, time.Now(), 42)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wire, err := receipt.IEncode()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(wire) != smpp.MAX_PDU_SIZE {
+					t.Fatalf("receipt length=%d", len(wire))
+				}
+			case <-time.After(time.Second):
+				t.Fatal("accepted submit has no receipt")
 			}
 		})
 	}

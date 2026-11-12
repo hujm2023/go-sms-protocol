@@ -2,13 +2,104 @@ package smpp34
 
 import (
 	"bytes"
+	"encoding/binary"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
+
+func TestDeliverSmGatewayDataCoding(test *testing.T) {
+	for value := 0; value <= 255; value++ {
+		test.Run(fmt.Sprintf("byte_%02x", value), func(subtest *testing.T) {
+			deliver := validDeliverSm()
+			deliver.DataCoding = uint8(value)
+			assertGatewayRoundTrip(subtest, &deliver)
+			require.Equal(subtest, uint8(value), deliver.DataCoding)
+		})
+	}
+}
+
+func TestDeliverSmGatewayTimeFields(test *testing.T) {
+	for _, timeField := range []struct {
+		name  string
+		value string
+	}{
+		{name: "empty"},
+		{name: "standard time", value: "000000000001000R"},
+		{name: "opaque time", value: "gateway-time"},
+		{name: "extended time", value: strings.Repeat("1", 128)},
+	} {
+		test.Run(timeField.name, func(subtest *testing.T) {
+			deliver := validDeliverSm()
+			deliver.ScheduleDeliveryTime = timeField.value
+			deliver.ValidityPeriod = timeField.value
+			assertGatewayRoundTrip(subtest, &deliver)
+			require.Equal(subtest, timeField.value, deliver.ScheduleDeliveryTime)
+			require.Equal(subtest, timeField.value, deliver.ValidityPeriod)
+		})
+	}
+}
+
+func TestGatewayReceiptDecodeAndAcknowledgement(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		sequence   uint32
+		registered uint8
+	}{
+		{name: "echoed receipt flag", sequence: 1800, registered: 1},
+		{name: "zero sequence", sequence: 0},
+		{name: "zero sequence and echoed flag", sequence: 0, registered: 1},
+		{name: "legacy high-bit sequence", sequence: 0x80000000, registered: 3},
+		{name: "legacy uint32 maximum and raw flags", sequence: 0xffffffff, registered: 0xff},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			receipt := validDeliverSm()
+			receipt.ESMClass = 4
+			wire, err := receipt.IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			binary.BigEndian.PutUint32(wire[12:16], test.sequence)
+			registeredOffset := 28 + len(receipt.ServiceType) + len(receipt.SourceAddr) + len(receipt.DestinationAddr)
+			wire[registeredOffset] = test.registered
+			pdu, err := DecodeSMPP34(wire)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded := pdu.(*DeliverSm)
+			if decoded.Sequence != test.sequence || decoded.RegisteredDelivery != test.registered {
+				t.Fatal("gateway receipt fields were not preserved")
+			}
+			encoded, err := decoded.IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(encoded, wire) {
+				t.Fatal("gateway receipt changed on re-encode")
+			}
+			ack, err := decoded.GenEmptyResponse().IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := DecodeSMPP34(ack)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.GetSequenceID() != test.sequence {
+				t.Fatal("ACK sequence does not match receipt")
+			}
+			if !bytes.Equal(ack, NewDeliverySMRespBytes(test.sequence)) {
+				t.Fatal("ACK helper differs")
+			}
+		})
+	}
+}
 
 type DeliverSmTestSuite struct {
 	suite.Suite

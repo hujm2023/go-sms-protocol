@@ -162,14 +162,8 @@ func (s *SubmitSm) validate() error {
 	if err := smpp.ValidateTimeCString(smpp.VALIDITY_PERIOD, s.ValidityPeriod); err != nil {
 		return err
 	}
-	if s.RegisteredDelivery&^uint8(0x2f) != 0 || s.RegisteredDelivery&0x03 == 0x03 {
-		return fmt.Errorf("submit_sm registered_delivery %#02x uses reserved bits or value", s.RegisteredDelivery)
-	}
 	if s.ReplaceIfPresentFlag > 1 {
 		return fmt.Errorf("replace_if_present_flag must be 0 or 1, got %d", s.ReplaceIfPresentFlag)
-	}
-	if err := smpp.ValidateDataCoding(s.DataCoding); err != nil {
-		return err
 	}
 	if s.SmDefaultMsgID == 0xff {
 		return fmt.Errorf("sm_default_msg_id 255 is reserved")
@@ -178,14 +172,7 @@ func (s *SubmitSm) validate() error {
 		return fmt.Errorf("sm_length=%d does not match short_message length=%d", s.SmLength, len(s.ShortMessage))
 	}
 
-	tlvs := s.optionalTLVs()
-	if err := smpp.ValidateTLVList(tlvs); err != nil {
-		return err
-	}
-	if len(tlvs.All(smpp.MESSAGE_PAYLOAD)) > 0 && (s.SmLength != 0 || len(s.ShortMessage) != 0) {
-		return fmt.Errorf("message_payload and short_message are mutually exclusive")
-	}
-	return nil
+	return smpp.ValidateTLVList(s.optionalTLVs())
 }
 
 func (s *SubmitSm) SetSequenceID(id uint32) {
@@ -272,11 +259,8 @@ func (s *SubmitSmResp) IDecode(data []byte) error {
 	defer r.Release()
 
 	s.Header = smpp.ReadHeader(r)
-	if s.Header.Status != smpp.ESME_ROK {
+	if r.Remaining() == 0 {
 		s.MessageID = ""
-		if r.Remaining() != 0 {
-			return fmt.Errorf("submit_sm_resp with error status must not contain a body")
-		}
 		return r.Error()
 	}
 	s.MessageID = r.ReadCString()
@@ -293,17 +277,15 @@ func (s *SubmitSmResp) IEncode() ([]byte, error) {
 	if err := smpp.ValidateResponseHeader(s.Header, smpp.SUBMIT_SM_RESP); err != nil {
 		return nil, err
 	}
-	if s.Header.Status == smpp.ESME_ROK {
-		if err := smpp.ValidateCString(smpp.MESSAGE_ID, s.MessageID, smpp.MAX_PDU_SIZE); err != nil {
-			return nil, err
-		}
+	if err := smpp.ValidateCString(smpp.MESSAGE_ID, s.MessageID, smpp.MAX_PDU_SIZE); err != nil {
+		return nil, err
 	}
 
 	w := packet.NewPacketWriter(0)
 	defer w.Release()
 
 	smpp.WriteHeaderNoLength(s.Header, w)
-	if s.Header.Status == smpp.ESME_ROK {
+	if s.Header.Status == smpp.ESME_ROK || s.MessageID != "" {
 		w.WriteCString(s.MessageID)
 	}
 
