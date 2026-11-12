@@ -24,7 +24,11 @@ func TestSessionAcknowledgesOutOfOrderReceiptAndBothHeartbeats(t *testing.T) {
 	}
 	responses := []protocol.PDU{
 		&smpp34.BindResp{Header: smpp.Header{ID: smpp.BIND_TRANSCEIVER_RESP, Sequence: 1}, SystemID: "smsc"},
-		&smpp34.DeliverSm{Header: smpp.Header{ID: smpp.DELIVER_SM, Sequence: 100}, ESMClass: 4, ShortMessage: content, SmLength: uint8(len(content))},
+		&smpp34.DeliverSm{
+			Header:   smpp.Header{ID: smpp.DELIVER_SM, Sequence: 0},
+			ESMClass: 4, RegisteredDelivery: 1, SourceAddr: "短信签名",
+			ShortMessage: content, SmLength: uint8(len(content)),
+		},
 		&smpp34.EnquireLink{Header: smpp.Header{ID: smpp.ENQUIRE_LINK, Sequence: 101}},
 		&smpp34.SubmitSmResp{Header: smpp.Header{ID: smpp.SUBMIT_SM_RESP, Sequence: 2}, MessageID: "42"},
 		&smpp34.EnquireLinkResp{Header: smpp.Header{ID: smpp.ENQUIRE_LINK_RESP, Sequence: 3}},
@@ -48,7 +52,7 @@ func TestSessionAcknowledgesOutOfOrderReceiptAndBothHeartbeats(t *testing.T) {
 		}
 		switch p := pdu.(type) {
 		case *smpp34.DeliverSmResp:
-			receiptAck = p.Sequence == 100 && p.Status == 0 && p.MessageID == ""
+			receiptAck = p.Sequence == 0 && p.Status == 0 && p.MessageID == ""
 		case *smpp34.EnquireLinkResp:
 			heartbeatAck = p.Sequence == 101 && p.Status == 0
 		}

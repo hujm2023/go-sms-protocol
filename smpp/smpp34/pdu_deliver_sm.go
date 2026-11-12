@@ -159,9 +159,6 @@ func (d *DeliverSm) validate() error {
 	if d.ScheduleDeliveryTime != "" || d.ValidityPeriod != "" {
 		return fmt.Errorf("deliver_sm schedule_delivery_time and validity_period must be NULL")
 	}
-	if d.RegisteredDelivery&^uint8(0x0c) != 0 {
-		return fmt.Errorf("deliver_sm registered_delivery %#02x uses reserved bits", d.RegisteredDelivery)
-	}
 	if d.ReplaceIfPresentFlag != 0 {
 		return fmt.Errorf("deliver_sm replace_if_present_flag must be zero")
 	}

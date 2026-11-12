@@ -88,7 +88,9 @@ Coverage in this table means that the package contains concrete PDU types and th
 
 SMPP 5.0 is not implemented. A protocol PDF or version constant in the repository does not imply decoder or PDU support.
 
-For gateway compatibility, SMPP codecs do not enforce the specification's per-field maximum lengths for variable-length strings (credentials, system/service types, addresses, and message IDs, including TLVs). Strings must still contain ASCII without embedded NULL bytes. `short_message` accepts up to 255 bytes, as represented by its one-byte length field. Length consistency, NULL termination, fixed-width fields, time formats, and the complete PDU limit of `smpp.MAX_PDU_SIZE` (4KB) remain enforced. The explicit `smpp.ValidateCString` helper still checks the maximum supplied by its caller.
+For gateway compatibility, SMPP codecs do not enforce the specification's per-field maximum lengths for variable-length strings (credentials, system/service types, addresses, and message IDs, including TLVs). Source and destination addresses preserve non-NULL bytes verbatim, including non-ASCII and non-UTF-8 encodings; callers choose the address encoding. Other strings still require ASCII without embedded NULL bytes. `short_message` accepts up to 255 bytes, as represented by its one-byte length field. Length consistency, NULL termination, fixed-width fields, time formats, and the complete PDU limit of `smpp.MAX_PDU_SIZE` (4KB) remain enforced. The explicit `smpp.ValidateCString` helper still checks the maximum supplied by its caller.
+
+For compatibility with the legacy gateway parser, `deliver_sm` preserves the raw `registered_delivery` byte and the complete uint32 `sequence_number` domain, including zero. `deliver_sm_resp` echoes the original sequence so the receipt can be acknowledged. Other command sequence rules and other field validation remain enforced.
 
 ## Packages
 

@@ -2,6 +2,7 @@ package smpp34
 
 import (
 	"bytes"
+	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,61 @@ import (
 
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
+
+func TestGatewayReceiptDecodeAndAcknowledgement(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		sequence   uint32
+		registered uint8
+	}{
+		{name: "echoed receipt flag", sequence: 1800, registered: 1},
+		{name: "zero sequence", sequence: 0},
+		{name: "zero sequence and echoed flag", sequence: 0, registered: 1},
+		{name: "legacy high-bit sequence", sequence: 0x80000000, registered: 3},
+		{name: "legacy uint32 maximum and raw flags", sequence: 0xffffffff, registered: 0xff},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			receipt := validDeliverSm()
+			receipt.ESMClass = 4
+			wire, err := receipt.IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			binary.BigEndian.PutUint32(wire[12:16], test.sequence)
+			registeredOffset := 28 + len(receipt.ServiceType) + len(receipt.SourceAddr) + len(receipt.DestinationAddr)
+			wire[registeredOffset] = test.registered
+			pdu, err := DecodeSMPP34(wire)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded := pdu.(*DeliverSm)
+			if decoded.Sequence != test.sequence || decoded.RegisteredDelivery != test.registered {
+				t.Fatal("gateway receipt fields were not preserved")
+			}
+			encoded, err := decoded.IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(encoded, wire) {
+				t.Fatal("gateway receipt changed on re-encode")
+			}
+			ack, err := decoded.GenEmptyResponse().IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := DecodeSMPP34(ack)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.GetSequenceID() != test.sequence {
+				t.Fatal("ACK sequence does not match receipt")
+			}
+			if !bytes.Equal(ack, NewDeliverySMRespBytes(test.sequence)) {
+				t.Fatal("ACK helper differs")
+			}
+		})
+	}
+}
 
 type DeliverSmTestSuite struct {
 	suite.Suite

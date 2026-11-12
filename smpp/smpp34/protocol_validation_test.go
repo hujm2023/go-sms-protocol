@@ -94,6 +94,9 @@ func TestSMPP34SequenceNumberDomainOnEncode(t *testing.T) {
 			{name: "sign bit", seq: 0x80000000, wantErr: true},
 		} {
 			t.Run(builder.name+"/"+tc.name, func(t *testing.T) {
+				if builder.name == "deliver" || builder.name == "deliver response" {
+					tc.wantErr = false
+				}
 				_, err := builder.build(tc.seq).IEncode()
 				if (err != nil) != tc.wantErr {
 					t.Fatalf("IEncode() error = %v, wantErr %t", err, tc.wantErr)
@@ -156,7 +159,7 @@ func TestSubmitSmProtocolFieldValidation(t *testing.T) {
 		{name: "nonzero request status", mutate: func(p *SubmitSm) { p.Status = smpp.ESME_RSYSERR }},
 		{name: "service type contains NULL", mutate: func(p *SubmitSm) { p.ServiceType = "a\x00b" }},
 		{name: "source address contains NULL", mutate: func(p *SubmitSm) { p.SourceAddr = "1\x002" }},
-		{name: "non ASCII address", mutate: func(p *SubmitSm) { p.SourceAddr = "短信" }},
+		{name: "NULL destination address", mutate: func(p *SubmitSm) { p.DestinationAddr = "1\x002" }},
 		{name: "invalid TON", mutate: func(p *SubmitSm) { p.SourceAddrTon = 7 }},
 		{name: "invalid NPI", mutate: func(p *SubmitSm) { p.SourceAddrNpi = 2 }},
 		{name: "reserved esm class type", mutate: func(p *SubmitSm) { p.ESMClass = 0x04 }},
@@ -197,7 +200,6 @@ func TestDeliverSmProtocolFieldValidation(t *testing.T) {
 		{name: "reserved esm class type", mutate: func(p *DeliverSm) { p.ESMClass = 0x0c }},
 		{name: "schedule must be null", mutate: func(p *DeliverSm) { p.ScheduleDeliveryTime = "000000000001000R" }},
 		{name: "validity must be null", mutate: func(p *DeliverSm) { p.ValidityPeriod = "000000000001000R" }},
-		{name: "registered delivery reserved bits", mutate: func(p *DeliverSm) { p.RegisteredDelivery = 1 }},
 		{name: "replace flag must be zero", mutate: func(p *DeliverSm) { p.ReplaceIfPresentFlag = 1 }},
 		{name: "default message must be zero", mutate: func(p *DeliverSm) { p.SmDefaultMsgId = 1 }},
 		{name: "payload conflicts with short message", mutate: func(p *DeliverSm) {
@@ -361,6 +363,40 @@ func TestStandardFieldLengthsRemainAccepted(t *testing.T) {
 	response.MessageID += "m"
 	if _, err := response.IEncode(); err != nil {
 		t.Fatalf("extended message_id rejected: %v", err)
+	}
+}
+
+func TestGatewayAddressBytesRoundTrip(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		address string
+	}{
+		{name: "UTF-8", address: "短信签名"},
+		{name: "non-UTF-8 octets", address: string([]byte{0xb6, 0xcc, 0xd0, 0xc5})},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			submit := validSubmitSm()
+			submit.SourceAddr, submit.DestinationAddr = test.address, test.address
+			deliver := validDeliverSm()
+			deliver.SourceAddr, deliver.DestinationAddr = test.address, test.address
+			for _, original := range []sms.PDU{&submit, &deliver} {
+				wire, err := original.IEncode()
+				if err != nil {
+					t.Fatal(err)
+				}
+				decoded, err := DecodeSMPP34(wire)
+				if err != nil {
+					t.Fatal(err)
+				}
+				encoded, err := decoded.IEncode()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(wire, encoded) {
+					t.Fatal("address bytes changed on round trip")
+				}
+			}
+		})
 	}
 }
 

@@ -11,8 +11,8 @@ var ErrInvalidSequenceNumber = errors.New("invalid SMPP sequence_number")
 // ValidateDecodedPDU validates the common SMPP header against the bytes that
 // contain the complete PDU. sequence_number is encoded as an unsigned
 // 4-octet Integer, but SMPP 3.4 limits its value to 1..0x7fffffff. A zero
-// value is only permitted for a generic_nack when the peer could not recover
-// the original sequence_number.
+// value is permitted when allowZeroSequence is set. Gateway deliver_sm
+// packets and their responses preserve the complete uint32 sequence domain.
 func ValidateDecodedPDU(data []byte, expectedID CMDId, allowZeroSequence bool) (Header, error) {
 	if len(data) < MinSMPPPacketLen || len(data) > MAX_PDU_SIZE {
 		return Header{}, fmt.Errorf("%w: got %d bytes", ErrInvalidPudLength, len(data))
@@ -28,7 +28,7 @@ func ValidateDecodedPDU(data []byte, expectedID CMDId, allowZeroSequence bool) (
 	if header.ID != expectedID {
 		return Header{}, fmt.Errorf("unexpected command_id: got %s, want %s", header.ID, expectedID)
 	}
-	if err := ValidateSequenceNumber(header.Sequence, allowZeroSequence); err != nil {
+	if err := validateCommandSequence(header.ID, header.Sequence, allowZeroSequence); err != nil {
 		return Header{}, err
 	}
 
@@ -70,7 +70,16 @@ func validateHeaderIdentity(header Header, expectedID CMDId, allowZeroSequence b
 	if header.ID != expectedID {
 		return fmt.Errorf("unexpected command_id: got %s, want %s", header.ID, expectedID)
 	}
-	return ValidateSequenceNumber(header.Sequence, allowZeroSequence)
+	return validateCommandSequence(header.ID, header.Sequence, allowZeroSequence)
+}
+
+func validateCommandSequence(command CMDId, sequence uint32, allowZero bool) error {
+	switch command {
+	case DELIVER_SM, DELIVER_SM_RESP:
+		return nil
+	default:
+		return ValidateSequenceNumber(sequence, allowZero)
+	}
 }
 
 func ValidateSequenceNumber(sequence uint32, allowZero bool) error {
