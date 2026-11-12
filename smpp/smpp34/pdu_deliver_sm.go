@@ -11,17 +11,17 @@ import (
 type DeliverSm struct {
 	smpp.Header
 
-	// CString, max 6
+	// CString; length is bounded by the total PDU size.
 	ServiceType string
 
 	SourceAddrTon uint8
 	SourceAddrNpi uint8
-	// CString, max 21
+	// CString; length is bounded by the total PDU size.
 	SourceAddr string
 
 	DestAddrTon uint8
 	DestAddrNpi uint8
-	// CString, max 21
+	// CString; length is bounded by the total PDU size.
 	DestinationAddr string
 
 	ESMClass     uint8
@@ -171,8 +171,8 @@ func (d *DeliverSm) validate() error {
 	if d.SmDefaultMsgId != 0 {
 		return fmt.Errorf("deliver_sm sm_default_msg_id must be zero")
 	}
-	if int(d.SmLength) != len(d.ShortMessage) || len(d.ShortMessage) > 254 {
-		return fmt.Errorf("sm_length=%d does not match short_message length=%d or exceeds 254", d.SmLength, len(d.ShortMessage))
+	if int(d.SmLength) != len(d.ShortMessage) {
+		return fmt.Errorf("sm_length=%d does not match short_message length=%d", d.SmLength, len(d.ShortMessage))
 	}
 
 	tlvs := d.optionalTLVs()

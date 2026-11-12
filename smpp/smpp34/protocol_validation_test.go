@@ -154,8 +154,8 @@ func TestSubmitSmProtocolFieldValidation(t *testing.T) {
 	}{
 		{name: "wrong command id", mutate: func(p *SubmitSm) { p.ID = smpp.DELIVER_SM }},
 		{name: "nonzero request status", mutate: func(p *SubmitSm) { p.Status = smpp.ESME_RSYSERR }},
-		{name: "service type too long", mutate: func(p *SubmitSm) { p.ServiceType = "123456" }},
-		{name: "source address too long", mutate: func(p *SubmitSm) { p.SourceAddr = "123456789012345678901" }},
+		{name: "service type contains NULL", mutate: func(p *SubmitSm) { p.ServiceType = "a\x00b" }},
+		{name: "source address contains NULL", mutate: func(p *SubmitSm) { p.SourceAddr = "1\x002" }},
 		{name: "non ASCII address", mutate: func(p *SubmitSm) { p.SourceAddr = "短信" }},
 		{name: "invalid TON", mutate: func(p *SubmitSm) { p.SourceAddrTon = 7 }},
 		{name: "invalid NPI", mutate: func(p *SubmitSm) { p.SourceAddrNpi = 2 }},
@@ -315,11 +315,13 @@ func TestBindFieldValidation(t *testing.T) {
 	}
 
 	for _, mutate := range []func(*Bind){
-		func(p *Bind) { p.SystemID = "1234567890123456" },
-		func(p *Bind) { p.Password = "123456789" },
-		func(p *Bind) { p.SystemType = "1234567890123" },
+		func(p *Bind) { p.SystemID = "system\x00id" },
+		func(p *Bind) { p.Password = "pass\x00word" },
+		func(p *Bind) { p.SystemID = "账号" },
+		func(p *Bind) { p.Password = "密码" },
+		func(p *Bind) { p.SystemType = "a\x00b" },
 		func(p *Bind) { p.InterfaceVersion = 0x35 },
-		func(p *Bind) { p.AddressRange = "12345678901234567890123456789012345678901" },
+		func(p *Bind) { p.AddressRange = "1\x002" },
 	} {
 		p := validBind()
 		mutate(&p)
@@ -329,7 +331,7 @@ func TestBindFieldValidation(t *testing.T) {
 	}
 }
 
-func TestCStringMaximumContentBoundaries(t *testing.T) {
+func TestStandardFieldLengthsRemainAccepted(t *testing.T) {
 	bind := validBind()
 	bind.SystemID = strings.Repeat("s", 15)
 	bind.Password = strings.Repeat("p", 8)
@@ -357,7 +359,72 @@ func TestCStringMaximumContentBoundaries(t *testing.T) {
 		t.Fatalf("64-octet message_id rejected: %v", err)
 	}
 	response.MessageID += "m"
-	if _, err := response.IEncode(); err == nil {
-		t.Fatal("65-octet message_id content accepted")
+	if _, err := response.IEncode(); err != nil {
+		t.Fatalf("extended message_id rejected: %v", err)
+	}
+}
+
+func TestExtendedVariableFieldsRoundTrip(t *testing.T) {
+	bind := validBind()
+	bind.SystemID = strings.Repeat("s", 128)
+	bind.Password = strings.Repeat("p", 128)
+	bind.SystemType = strings.Repeat("t", 128)
+	bind.AddressRange = strings.Repeat("a", 128)
+	submit := validSubmitSm()
+	submit.ServiceType = strings.Repeat("s", 128)
+	submit.SourceAddr = strings.Repeat("1", 128)
+	submit.DestinationAddr = strings.Repeat("2", 128)
+	submit.ShortMessage = bytes.Repeat([]byte{'x'}, 255)
+	submit.SmLength = 255
+	submit.OptionalTLVs = smpp.TLVList{
+		smpp.NewTLV(smpp.RECEIPTED_MESSAGE_ID, append(bytes.Repeat([]byte{'m'}, 128), 0)),
+	}
+	deliver := validDeliverSm()
+	deliver.ServiceType = submit.ServiceType
+	deliver.SourceAddr = submit.SourceAddr
+	deliver.DestinationAddr = submit.DestinationAddr
+	deliver.ShortMessage = submit.ShortMessage
+	deliver.SmLength = submit.SmLength
+	deliver.OptionalTLVs = submit.OptionalTLVs
+	response := &SubmitSmResp{
+		Header:    smpp.Header{ID: smpp.SUBMIT_SM_RESP, Sequence: 1},
+		MessageID: strings.Repeat("m", 128),
+	}
+	for _, test := range []struct {
+		name     string
+		original sms.PDU
+		decoded  sms.PDU
+	}{
+		{name: "bind", original: &bind, decoded: new(Bind)},
+		{name: "submit", original: &submit, decoded: new(SubmitSm)},
+		{name: "deliver", original: &deliver, decoded: new(DeliverSm)},
+		{name: "submit response", original: response, decoded: new(SubmitSmResp)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			wire, err := test.original.IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := test.decoded.IDecode(wire); err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := test.decoded.IEncode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(wire, encoded) {
+				t.Fatal("extended fields changed during round trip")
+			}
+		})
+	}
+	submit.ShortMessage = append(submit.ShortMessage, 'x')
+	submit.SmLength = 0
+	if _, err := submit.IEncode(); err == nil {
+		t.Fatal("256-byte short_message encoded with uint8 length")
+	}
+	deliver.ShortMessage = submit.ShortMessage
+	deliver.SmLength = 0
+	if _, err := deliver.IEncode(); err == nil {
+		t.Fatal("256-byte delivery encoded with uint8 length")
 	}
 }

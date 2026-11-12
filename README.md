@@ -88,6 +88,8 @@ Coverage in this table means that the package contains concrete PDU types and th
 
 SMPP 5.0 is not implemented. A protocol PDF or version constant in the repository does not imply decoder or PDU support.
 
+For gateway compatibility, SMPP codecs do not enforce the specification's per-field maximum lengths for variable-length strings (credentials, system/service types, addresses, and message IDs, including TLVs). Strings must still contain ASCII without embedded NULL bytes. `short_message` accepts up to 255 bytes, as represented by its one-byte length field. Length consistency, NULL termination, fixed-width fields, time formats, and the complete PDU limit of `smpp.MAX_PDU_SIZE` (4KB) remain enforced. The explicit `smpp.ValidateCString` helper still checks the maximum supplied by its caller.
+
 ## Packages
 
 | Package | Purpose |

@@ -11,13 +11,13 @@ import (
 type Bind struct {
 	smpp.Header
 
-	// CString, max 16,Identifies the ESME system requesting to bind as a receiver with the SMSC.
+	// CString identifying the ESME; length is bounded by the total PDU size.
 	SystemID string
 
-	// CString, max 9
+	// CString; length is bounded by the total PDU size.
 	Password string
 
-	// CString, max 13
+	// CString; length is bounded by the total PDU size.
 	SystemType string
 
 	InterfaceVersion uint8
@@ -26,7 +26,7 @@ type Bind struct {
 
 	AddrNpi uint8
 
-	// CString, max 41
+	// CString; length is bounded by the total PDU size.
 	AddressRange string
 }
 
@@ -132,13 +132,13 @@ func (b *Bind) validate() error {
 	if err := smpp.ValidateRequestHeader(b.Header, b.Header.ID); err != nil {
 		return err
 	}
-	if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, 16); err != nil {
+	if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, smpp.MAX_PDU_SIZE); err != nil {
 		return err
 	}
-	if err := smpp.ValidateCString(smpp.PASSWORD, b.Password, 9); err != nil {
+	if err := smpp.ValidateCString(smpp.PASSWORD, b.Password, smpp.MAX_PDU_SIZE); err != nil {
 		return err
 	}
-	if err := smpp.ValidateCString(smpp.SYSTEM_TYPE, b.SystemType, 13); err != nil {
+	if err := smpp.ValidateCString(smpp.SYSTEM_TYPE, b.SystemType, smpp.MAX_PDU_SIZE); err != nil {
 		return err
 	}
 	if err := smpp.ValidateInterfaceVersion(b.InterfaceVersion); err != nil {
@@ -150,7 +150,7 @@ func (b *Bind) validate() error {
 	if err := smpp.ValidateNPI(smpp.ADDR_NPI, b.AddrNpi); err != nil {
 		return err
 	}
-	return smpp.ValidateCString(smpp.ADDRESS_RANGE, b.AddressRange, 41)
+	return smpp.ValidateCString(smpp.ADDRESS_RANGE, b.AddressRange, smpp.MAX_PDU_SIZE)
 }
 
 func isBindRequestID(id smpp.CMDId) bool {
@@ -185,7 +185,7 @@ func (b *Bind) String() string {
 type BindResp struct {
 	smpp.Header
 
-	// CString, max 16
+	// CString; length is bounded by the total PDU size.
 	SystemID string
 
 	TLVs smpp.TLVs
@@ -217,7 +217,7 @@ func (b *BindResp) IEncode() ([]byte, error) {
 	}
 	var tlvBytes []byte
 	if b.Header.Status == smpp.ESME_ROK {
-		if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, 16); err != nil {
+		if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, smpp.MAX_PDU_SIZE); err != nil {
 			return nil, err
 		}
 		tlvList := b.TLVs.ToList()
@@ -296,7 +296,7 @@ func (b *BindResp) IDecode(data []byte) error {
 	if err := buf.Error(); err != nil {
 		return err
 	}
-	if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, 16); err != nil {
+	if err := smpp.ValidateCString(smpp.SYSTEM_ID, b.SystemID, smpp.MAX_PDU_SIZE); err != nil {
 		return err
 	}
 	return smpp.ValidateTLVList(tlvList)

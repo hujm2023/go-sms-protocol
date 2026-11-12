@@ -51,7 +51,7 @@ func parseConfig(args []string, lookup func(string) (string, bool), output io.Wr
 	f.StringVar(&cfg.address, "server", "127.0.0.1:2775", "SMSC address")
 	f.StringVar(&cfg.source, "source", "106900001", "source address")
 	f.StringVar(&cfg.destination, "destination", "13800138000", "simulated recipient")
-	f.StringVar(&cfg.message, "message", "hello SMPP", "ASCII message, at most 140 bytes")
+	f.StringVar(&cfg.message, "message", "hello SMPP", "ASCII message, at most 255 bytes")
 	f.DurationVar(&cfg.timeout, "timeout", 30*time.Second, "deadline for the complete exchange")
 	if err := f.Parse(args); err != nil {
 		return config{}, err
@@ -59,29 +59,30 @@ func parseConfig(args []string, lookup func(string) (string, bool), output io.Wr
 	if f.NArg() != 0 || cfg.timeout <= 0 {
 		return config{}, errors.New("unexpected arguments or nonpositive timeout")
 	}
-	credentials, err := exampleutil.LoadCredentials(lookup, "SMPP34", 15, 8)
+	credentials, err := exampleutil.LoadCredentials(
+		lookup,
+		"SMPP34",
+		smpp.MAX_PDU_SIZE-1,
+		smpp.MAX_PDU_SIZE-1,
+	)
 	if err != nil {
 		return config{}, err
 	}
 	cfg.Credentials = credentials
 	for field, value := range map[string]string{smpp.SYSTEM_ID: cfg.Account, smpp.PASSWORD: cfg.Password} {
-		maximum := 16
-		if field == smpp.PASSWORD {
-			maximum = 9
-		}
-		if err := smpp.ValidateCString(field, value, maximum); err != nil {
+		if err := smpp.ValidateCString(field, value, smpp.MAX_PDU_SIZE); err != nil {
 			return config{}, err
 		}
 	}
 	for _, value := range []string{cfg.source, cfg.destination} {
-		if err := exampleutil.TextField(value, 1, 20); err != nil {
+		if err := exampleutil.TextField(value, 1, smpp.MAX_PDU_SIZE-1); err != nil {
 			return config{}, err
 		}
-		if err := smpp.ValidateCString("address", value, 21); err != nil {
+		if err := smpp.ValidateCString("address", value, smpp.MAX_PDU_SIZE); err != nil {
 			return config{}, err
 		}
 	}
-	return cfg, exampleutil.ASCIIMessage(cfg.message, 140)
+	return cfg, exampleutil.ASCIIMessage(cfg.message, 255)
 }
 
 func runClient(ctx context.Context, cfg config, output io.Writer) error {

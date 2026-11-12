@@ -2,6 +2,8 @@ package smpp34
 
 import (
 	"bytes"
+	"encoding/binary"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +11,91 @@ import (
 
 	"github.com/hujm2023/go-sms-protocol/smpp"
 )
+
+func TestBindExtendedCredentials(t *testing.T) {
+	for _, command := range []smpp.CMDId{smpp.BIND_RECEIVER, smpp.BIND_TRANSMITTER, smpp.BIND_TRANSCEIVER} {
+		t.Run(command.String(), func(t *testing.T) {
+			for _, test := range []struct {
+				name                          string
+				accountLength, passwordLength int
+			}{
+				{name: "beyond standard", accountLength: 16, passwordLength: 9},
+				{name: "long credentials", accountLength: 128, passwordLength: 256},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					request := validBind()
+					request.ID = command
+					request.SystemID = strings.Repeat("s", test.accountLength)
+					request.Password = strings.Repeat("p", test.passwordLength)
+					wire, err := request.IEncode()
+					if err != nil {
+						t.Fatal(err)
+					}
+					var decoded Bind
+					if err := decoded.IDecode(wire); err != nil {
+						t.Fatal(err)
+					}
+					if decoded.SystemID != request.SystemID || decoded.Password != request.Password {
+						t.Fatal("credentials changed during round trip")
+					}
+					response := request.GenEmptyResponse().(*BindResp)
+					response.SystemID = request.SystemID
+					wire, err = response.IEncode()
+					if err != nil {
+						t.Fatal(err)
+					}
+					var decodedResponse BindResp
+					if err := decodedResponse.IDecode(wire); err != nil {
+						t.Fatal(err)
+					}
+					if decodedResponse.SystemID != response.SystemID {
+						t.Fatal("response system_id changed")
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestBindExtendedCredentialsPDUSizeLimit(t *testing.T) {
+	request := validBind()
+	request.SystemID = strings.Repeat("s", smpp.MAX_PDU_SIZE-smpp.MinSMPPPacketLen-7-len(request.Password))
+	response := &BindResp{
+		Header:   smpp.Header{ID: smpp.BIND_TRANSCEIVER_RESP, Sequence: 1},
+		SystemID: strings.Repeat("s", smpp.MAX_PDU_SIZE-smpp.MinSMPPPacketLen-1),
+	}
+	for _, test := range []struct {
+		name   string
+		encode func() ([]byte, error)
+		decode func([]byte) error
+		grow   func()
+	}{
+		{name: "request", encode: request.IEncode, decode: new(Bind).IDecode, grow: func() { request.Password += "p" }},
+		{name: "response", encode: response.IEncode, decode: new(BindResp).IDecode, grow: func() { response.SystemID += "s" }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			wire, err := test.encode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(wire) != smpp.MAX_PDU_SIZE {
+				t.Fatalf("PDU size = %d", len(wire))
+			}
+			if err := test.decode(wire); err != nil {
+				t.Fatal(err)
+			}
+			test.grow()
+			if _, err := test.encode(); err == nil {
+				t.Fatal("oversized PDU encoded")
+			}
+			wire = append(wire, 0)
+			binary.BigEndian.PutUint32(wire[:4], uint32(len(wire)))
+			if err := test.decode(wire); err == nil {
+				t.Fatal("oversized PDU decoded")
+			}
+		})
+	}
+}
 
 type BindTestSuite struct {
 	suite.Suite

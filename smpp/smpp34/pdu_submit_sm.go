@@ -11,18 +11,18 @@ import (
 type SubmitSm struct {
 	smpp.Header
 
-	// CString, max 6
+	// CString; length is bounded by the total PDU size.
 	ServiceType string
 
 	SourceAddrTon uint8
 	SourceAddrNpi uint8
-	// CString, max 21
+	// CString; length is bounded by the total PDU size.
 	SourceAddr string
 
 	DestAddrTon uint8
 	DestAddrNpi uint8
 
-	// CString, max 21
+	// CString; length is bounded by the total PDU size.
 	DestinationAddr string
 
 	ESMClass     uint8
@@ -40,7 +40,7 @@ type SubmitSm struct {
 	SmDefaultMsgID       uint8
 
 	SmLength uint8
-	// Uint8, max 254
+	// Octet string, max 255 bytes as represented by SmLength.
 	ShortMessage []byte
 
 	// OptionalTLVs preserves wire order and repeated tags. When non-nil it is
@@ -174,8 +174,8 @@ func (s *SubmitSm) validate() error {
 	if s.SmDefaultMsgID == 0xff {
 		return fmt.Errorf("sm_default_msg_id 255 is reserved")
 	}
-	if int(s.SmLength) != len(s.ShortMessage) || len(s.ShortMessage) > 254 {
-		return fmt.Errorf("sm_length=%d does not match short_message length=%d or exceeds 254", s.SmLength, len(s.ShortMessage))
+	if int(s.SmLength) != len(s.ShortMessage) {
+		return fmt.Errorf("sm_length=%d does not match short_message length=%d", s.SmLength, len(s.ShortMessage))
 	}
 
 	tlvs := s.optionalTLVs()
@@ -243,7 +243,7 @@ func (s *SubmitSm) String() string {
 
 type SubmitSmResp struct {
 	smpp.Header
-	// CString, max 65
+	// CString; length is bounded by the total PDU size.
 	MessageID string
 }
 
@@ -286,7 +286,7 @@ func (s *SubmitSmResp) IDecode(data []byte) error {
 	if r.Remaining() != 0 {
 		return fmt.Errorf("submit_sm_resp contains %d trailing octets", r.Remaining())
 	}
-	return smpp.ValidateCString(smpp.MESSAGE_ID, s.MessageID, 65)
+	return smpp.ValidateCString(smpp.MESSAGE_ID, s.MessageID, smpp.MAX_PDU_SIZE)
 }
 
 func (s *SubmitSmResp) IEncode() ([]byte, error) {
@@ -294,7 +294,7 @@ func (s *SubmitSmResp) IEncode() ([]byte, error) {
 		return nil, err
 	}
 	if s.Header.Status == smpp.ESME_ROK {
-		if err := smpp.ValidateCString(smpp.MESSAGE_ID, s.MessageID, 65); err != nil {
+		if err := smpp.ValidateCString(smpp.MESSAGE_ID, s.MessageID, smpp.MAX_PDU_SIZE); err != nil {
 			return nil, err
 		}
 	}

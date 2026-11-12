@@ -4,7 +4,7 @@
 
 ## 运行
 
-在仓库根目录的两个终端配置同一组环境变量。`system_id` 最多 15 字节，密码最多 8 字节，均使用 ASCII；字段上限已扣除协议要求的结尾 NUL：
+在仓库根目录的两个终端配置同一组环境变量。为兼容实际网关，可变长字符串（包括账号、密码、地址和消息 ID）统一放宽协议规定的字段长度上限，仍须使用 ASCII 且不能包含 NUL；完整 PDU 仍受 4KB 上限约束：
 
 ```bash
 export SMPP34_ACCOUNT='demo'
@@ -57,6 +57,6 @@ go test ./nioserver/examples/smpp34...
 go test -race -tags=integration ./nioserver/examples/smpp34server
 ```
 
-服务端可配置 `-listen`、`-receipt-workers`、`-receipt-queue`、回执延迟、探活间隔、未应答次数和传输/关闭超时。队列容量按单条提交计数。客户端提供 `-server`、`-source`、`-destination`、`-message`，以及覆盖完整交互的 `-timeout`（默认 30 秒）；客户端的演示正文限制为 140 字节 ASCII。
+服务端可配置 `-listen`、`-receipt-workers`、`-receipt-queue`、回执延迟、探活间隔、未应答次数和传输/关闭超时。队列容量按单条提交计数。客户端提供 `-server`、`-source`、`-destination`、`-message`，以及覆盖完整交互的 `-timeout`（默认 30 秒）；客户端的演示正文支持最多 255 字节 ASCII，与 `sm_length` 的单字节容量一致。
 
 这是单账号、单进程的接线示例：数据只在内存中，不提供持久化、回执重发/超时跟踪、跨连接回执路由、滑动窗口、长短信重组或真实计费。消息 ID 在进程重启后重新计数，不具备全局唯一性。
