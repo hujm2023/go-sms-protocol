@@ -68,6 +68,32 @@ func TestSessionRejectsFailedBind(t *testing.T) {
 	}
 }
 
+func TestConfigurationExtendedCredentials(t *testing.T) {
+	account := strings.Repeat("a", 128)
+	password := strings.Repeat("p", 256)
+	lookup := func(name string) (string, bool) {
+		switch name {
+		case "SMPP34_ACCOUNT":
+			return account, true
+		case "SMPP34_PASSWORD":
+			return password, true
+		default:
+			return "", false
+		}
+	}
+	cfg, err := parseConfig([]string{
+		"-source=" + strings.Repeat("1", 128),
+		"-destination=" + strings.Repeat("2", 128),
+		"-message=" + strings.Repeat("m", 255),
+	}, lookup, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Account != account || cfg.Password != password {
+		t.Fatal("credentials changed during configuration")
+	}
+}
+
 func TestClientConfiguration(t *testing.T) {
 	env := func(name string) (string, bool) {
 		if name == "SMPP34_ACCOUNT" {
@@ -84,7 +110,8 @@ func TestClientConfiguration(t *testing.T) {
 	}{
 		{name: "deadline", args: []string{"-timeout=0"}},
 		{name: "non-ASCII", args: []string{"-message=中文"}},
-		{name: "long address", args: []string{"-source=" + strings.Repeat("1", 21)}},
+		{name: "address exceeds PDU capacity", args: []string{"-source=" + strings.Repeat("1", smpp.MAX_PDU_SIZE)}},
+		{name: "message exceeds length capacity", args: []string{"-message=" + strings.Repeat("m", 256)}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

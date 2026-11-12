@@ -143,10 +143,10 @@ func ValidateTLVList(tlvs TLVList) error {
 		return fmt.Errorf("receipted_message_id occurs %d times; maximum is one", len(values))
 	} else if len(values) == 1 {
 		value := values[0].ValueBytes
-		if len(value) < 1 || len(value) > 65 || value[len(value)-1] != 0 {
-			return invalidTLVValue(RECEIPTED_MESSAGE_ID, "must be a NULL-terminated C-Octet String of 1..65 octets")
+		if len(value) < 1 || value[len(value)-1] != 0 {
+			return invalidTLVValue(RECEIPTED_MESSAGE_ID, "must be a NULL-terminated C-Octet String")
 		}
-		if err := ValidateCString("receipted_message_id", string(value[:len(value)-1]), 65); err != nil {
+		if err := ValidateCString("receipted_message_id", string(value[:len(value)-1]), math.MaxUint16); err != nil {
 			return err
 		}
 	}

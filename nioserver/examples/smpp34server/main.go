@@ -61,15 +61,20 @@ func parseConfig(args []string, lookup func(string) (string, bool), output io.Wr
 	if f.NArg() != 0 {
 		return config{}, errors.New("unexpected positional arguments")
 	}
-	credentials, err := exampleutil.LoadCredentials(lookup, "SMPP34", 15, 8)
+	credentials, err := exampleutil.LoadCredentials(
+		lookup,
+		"SMPP34",
+		smpp.MAX_PDU_SIZE-1,
+		smpp.MAX_PDU_SIZE-1,
+	)
 	if err != nil {
 		return config{}, err
 	}
 	cfg.Credentials = credentials
-	if err := smpp.ValidateCString(smpp.SYSTEM_ID, cfg.Account, 16); err != nil {
+	if err := smpp.ValidateCString(smpp.SYSTEM_ID, cfg.Account, smpp.MAX_PDU_SIZE); err != nil {
 		return config{}, err
 	}
-	if err := smpp.ValidateCString(smpp.PASSWORD, cfg.Password, 9); err != nil {
+	if err := smpp.ValidateCString(smpp.PASSWORD, cfg.Password, smpp.MAX_PDU_SIZE); err != nil {
 		return config{}, err
 	}
 	if cfg.heartbeatEvery <= 0 || cfg.heartbeatMisses < 1 {

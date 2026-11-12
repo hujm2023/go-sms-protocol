@@ -167,7 +167,10 @@ func TestValidateTLVList(t *testing.T) {
 	}
 
 	invalid := []TLVList{
+		{NewTLV(RECEIPTED_MESSAGE_ID, nil)},
 		{NewTLV(RECEIPTED_MESSAGE_ID, []byte("missing-null"))},
+		{NewTLV(RECEIPTED_MESSAGE_ID, []byte{'a', 0, 'b', 0})},
+		{NewTLV(RECEIPTED_MESSAGE_ID, []byte{0xff, 0})},
 		{NewTLV(SC_INTERFACE_VERSION, []byte{0x35})},
 		{NewTLV(SAR_MSG_REF_NUM, []byte{0, 1})},
 		{
