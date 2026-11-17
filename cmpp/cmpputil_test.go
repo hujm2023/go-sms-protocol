@@ -77,6 +77,13 @@ func TestGenConnectAuthSourceAddrPadding(t *testing.T) {
 		expected  string
 	}{
 		{
+			name:      "four byte account",
+			account:   "9001",
+			password:  "abc",
+			timestamp: "0121080510",
+			expected:  "2ee160ad9fb09dc4d21987b0ae1f7509",
+		},
+		{
 			name:      "five byte account",
 			account:   "90001",
 			password:  "abcdef",
@@ -130,6 +137,24 @@ func TestGenConnectAuthSourceAddrPadding(t *testing.T) {
 			auth := GenConnectAuth(test.account, test.password, test.timestamp)
 			if got := hex.EncodeToString(auth); got != test.expected {
 				t.Fatalf("GenConnectAuth() = %s, want %s", got, test.expected)
+			}
+		})
+	}
+}
+
+func TestGenConnectAuthUnpadded(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		account  string
+		expected string
+	}{
+		{name: "four byte account", account: "9001", expected: "bc1715396b9b79917053120ffc12c463"},
+		{name: "six byte account", account: "900001", expected: "813dcb6682c69231fe9405969afc0214"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			auth := GenConnectAuthUnpadded(test.account, "abc", "0121080510")
+			if got := hex.EncodeToString(auth); got != test.expected {
+				t.Fatalf("GenConnectAuthUnpadded() = %s, want %s", got, test.expected)
 			}
 		})
 	}
