@@ -102,7 +102,11 @@ Other command sequence rules, field validation, TLV structure and semantic check
 
 ### CMPP CONNECT authentication
 
-`cmpp.GenConnectAuth` and `cmpp20.NewConnect` pad short accounts to six bytes before calculating `AuthenticatorSource`. If a gateway hashes the original account bytes, use `cmpp.GenConnectAuthUnpadded` for that connection. The hash still includes the nine zero bytes after the account, and the encoded `SourceAddr` field remains six bytes.
+`cmpp.GenConnectAuth` and `cmpp20.NewConnect` pad short accounts to six bytes before calculating `AuthenticatorSource`.
+
+Some carriers in mainland China verify `AuthenticatorSource` on direct CMPP connections to their gateways using the original `SourceAddr` bytes, without padding short accounts. Use `cmpp.GenConnectAuthUnpadded` for those direct connections. For connections through third-party SMS providers, follow the provider's authentication rules.
+
+The hash still includes the nine zero bytes after the account, and the encoded `SourceAddr` field remains six bytes.
 
 ```go
 connect := cmpp20.NewConnect(account, password, seqID)

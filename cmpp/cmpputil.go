@@ -44,8 +44,11 @@ func GenConnectAuth(account string, password string, timestampStr string) []byte
 	return genConnectAuth(sourceAddr, password, timestampStr)
 }
 
-// GenConnectAuthUnpadded generates AuthenticatorSource for CMPP gateways that hash
-// the original SourceAddr bytes without padding them to six bytes.
+// GenConnectAuthUnpadded generates AuthenticatorSource without padding SourceAddr.
+// Some carriers in mainland China verify AuthenticatorSource this way on
+// direct CMPP connections to their own gateways.
+// For third-party SMS providers, follow the provider's authentication rules.
+//
 // The nine zero bytes after SourceAddr are still included in the hash.
 // The CONNECT PDU still encodes SourceAddr as a six-byte field.
 func GenConnectAuthUnpadded(account string, password string, timestampStr string) []byte {
