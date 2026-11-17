@@ -100,6 +100,23 @@ For compatibility with the legacy gateway parser:
 
 Other command sequence rules, field validation, TLV structure and semantic checks remain enforced. Truncated strings, short-message data, and TLVs are rejected rather than silently truncated or zero-filled.
 
+### CMPP CONNECT authentication
+
+`cmpp.GenConnectAuth` and `cmpp20.NewConnect` pad short accounts to six bytes before calculating `AuthenticatorSource`.
+
+Some carriers in mainland China verify `AuthenticatorSource` on direct CMPP connections to their gateways using the original `SourceAddr` bytes, without padding short accounts. Use `cmpp.GenConnectAuthUnpadded` for those direct connections. For connections through third-party SMS providers, follow the provider's authentication rules.
+
+The hash still includes the nine zero bytes after the account, and the encoded `SourceAddr` field remains six bytes.
+
+```go
+connect := cmpp20.NewConnect(account, password, seqID)
+connect.AuthenticatorSource = string(cmpp.GenConnectAuthUnpadded(
+    account, password, cmpp.TimeStamp2Str(connect.Timestamp),
+))
+```
+
+For CMPP 3.0, use the same helper when setting `cmpp30.Connect.AuthenticatorSource`.
+
 ## Packages
 
 | Package | Purpose |

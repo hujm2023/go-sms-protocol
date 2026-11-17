@@ -88,6 +88,23 @@ SMPP_ENQUIRE_LINK sequence=42
 
 当前没有实现 SMPP 5.0。仓库中存在协议 PDF 或版本常量，不代表已有对应的分发器和 PDU 实现。
 
+### CMPP CONNECT 鉴权
+
+`cmpp.GenConnectAuth` 和 `cmpp20.NewConnect` 默认先把短账号补齐到 6 字节，再计算 `AuthenticatorSource`。
+
+中国大陆运营商的直连 CMPP 通道中，有些网关使用原始 `SourceAddr` 字节校验 `AuthenticatorSource`，短账号参与鉴权计算时不补零。对接这类运营商直连通道时，使用 `cmpp.GenConnectAuthUnpadded`。经第三方短信供应商接入时，以该供应商的鉴权规则为准。
+
+MD5 输入仍保留账号后固定的 9 个 `0x00`，CONNECT 报文里的 `SourceAddr` 也仍然占 6 字节。
+
+```go
+connect := cmpp20.NewConnect(account, password, seqID)
+connect.AuthenticatorSource = string(cmpp.GenConnectAuthUnpadded(
+    account, password, cmpp.TimeStamp2Str(connect.Timestamp),
+))
+```
+
+CMPP 3.0 可以用同一个函数设置 `cmpp30.Connect.AuthenticatorSource`。
+
 ## 主要包
 
 | 包 | 用途 |
